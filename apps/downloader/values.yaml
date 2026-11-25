@@ -34,3 +34,16 @@ resources:
 
 nodeSelector:
   kubernetes.io/hostname: dinosaur
+
+ingress:
+  enabled: true
+  host: download.dinosaur.lan
+
+  entryPoint: websecure
+
+  tls:
+    existingSecret: dinosaur-wildcard-tls
+
+  auth:
+    existingSecret: downloader-web-auth
+    realm: Dinosaur NAS
