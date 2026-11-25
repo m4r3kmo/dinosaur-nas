@@ -10,3 +10,7 @@ NVIDIA_DEVICE_PLUGIN_VERSION := 0.20.2
 
 # Dinosaur Downloader
 DOWNLOADER_VERSION := 0.3.0
+
+# Certificate management
+CERT_MANAGER_VERSION := v1.21.3
+CMCTL_VERSION := v2.6.2

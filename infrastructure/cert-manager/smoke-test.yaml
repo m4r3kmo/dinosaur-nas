@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dinosaur-pki-test
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: smoke-test-issuer
+  namespace: dinosaur-pki-test
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cert-manager-smoke-test
+  namespace: dinosaur-pki-test
+spec:
+  secretName: cert-manager-smoke-test-tls
+
+  duration: 168h
+  renewBefore: 24h
+
+  commonName: pki-test.dinosaur.lan
+
+  dnsNames:
+    - pki-test.dinosaur.lan
+
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    rotationPolicy: Always
+
+  issuerRef:
+    name: smoke-test-issuer
+    kind: Issuer
+    group: cert-manager.io

@@ -12,18 +12,50 @@ help:
 	@echo "Dinosaur NAS Infrastructure"
 	@echo ""
 	@echo "Cluster management:"
-	@echo "  make status           - Cluster overview"
-	@echo "  make nodes            - Kubernetes nodes"
-	@echo "  make pods             - Kubernetes pods"
-	@echo "  make services         - Kubernetes services"
-	@echo "  make releases         - Helm releases"
+	@echo "  make status              - Cluster overview"
+	@echo "  make nodes               - Kubernetes nodes"
+	@echo "  make pods                - Kubernetes pods"
+	@echo "  make services            - Kubernetes services"
+	@echo "  make releases            - Helm releases"
 	@echo ""
 	@echo "NVIDIA GPU:"
-	@echo "  make gpu              - NVIDIA GPU status"
-	@echo "  make bootstrap-nvidia - Install NVIDIA Container Toolkit"
-	@echo "  make gpu-runtime      - Verify NVIDIA runtime"
-	@echo "  make template-nvidia  - Render NVIDIA Helm templates"
-	@echo "  make deploy-nvidia    - Deploy NVIDIA Device Plugin"
+	@echo "  make gpu                 - NVIDIA GPU status"
+	@echo "  make bootstrap-nvidia    - Install NVIDIA Container Toolkit"
+	@echo "  make gpu-runtime         - Verify NVIDIA runtime"
+	@echo "  make template-nvidia     - Render NVIDIA Helm templates"
+	@echo "  make deploy-nvidia       - Deploy NVIDIA Device Plugin"
+	@echo "  make test-gpu            - Run GPU smoke test"
+	@echo "  make clean-gpu-test      - Remove GPU smoke test"
+	@echo ""
+	@echo "Storage infrastructure:"
+	@echo "  make storage-status     - Disk and filesystem overview"
+	@echo "  make storage-init       - Initialize disks (DESTRUCTIVE)"
+	@echo "  make storage-mount      - Mount NAS storage"
+	@echo "  make storage-verify     - Verify NAS storage"
+	@echo "  make storage-dependencies - Configure K3s storage dependencies"
+	@echo "  make storage-layout     - Create media directories"
+	@echo "  make lint-storage       - Validate storage Helm chart"
+	@echo "  make template-storage   - Render storage Helm templates"
+	@echo "  make deploy-storage     - Deploy Kubernetes storage"
+	@echo "  make test-storage       - Run storage smoke test"
+	@echo "  make clean-storage-test - Remove storage smoke test"
+	@echo ""
+	@echo "Jellyfin:"
+	@echo "  make lint-jellyfin       - Validate Helm chart"
+	@echo "  make template-jellyfin   - Render Helm templates"
+	@echo "  make deploy-jellyfin     - Deploy Jellyfin"
+	@echo "  make status-jellyfin     - Jellyfin status"
+	@echo "  make logs-jellyfin       - Follow Jellyfin logs"
+	@echo ""
+	@echo "Samba SMB:"
+	@echo "  make lint-samba          - Validate Helm chart"
+	@echo "  make template-samba      - Render Helm templates"
+	@echo "  make deploy-samba        - Deploy Samba"
+	@echo "  make status-samba        - Samba status"
+	@echo "  make logs-samba          - Follow Samba logs"
+	@$(MAKE) --no-print-directory help-downloader
+	@$(MAKE) --no-print-directory help-cert-manager
+	@$(MAKE) --no-print-directory help-pki
 
 # ---------------------------------------------------------------------------
 # Cluster management
@@ -235,3 +267,9 @@ logs-samba:
 # ---------------------------------------------------------------------------
 
 include make/downloader.mk
+
+# ---------------------------------------------------------------------------
+# Certificate management
+# ---------------------------------------------------------------------------
+
+include make/cert-manager.mk

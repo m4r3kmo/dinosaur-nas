@@ -1,0 +1,32 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dinosaur-wildcard
+  namespace: media
+
+spec:
+  secretName: dinosaur-wildcard-managed-tls
+
+  duration: 2160h
+  renewBefore: 720h
+
+  commonName: "*.dinosaur.lan"
+
+  dnsNames:
+    - "*.dinosaur.lan"
+    - dinosaur.lan
+
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    rotationPolicy: Always
+
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+
+  issuerRef:
+    name: dinosaur-ca
+    kind: ClusterIssuer
+    group: cert-manager.io

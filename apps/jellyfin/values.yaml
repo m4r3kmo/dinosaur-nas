@@ -29,7 +29,7 @@ ingress:
 
   tls:
     enabled: true
-    existingSecret: dinosaur-wildcard-tls
+    existingSecret: dinosaur-wildcard-managed-tls
 
 persistence:
   config:
