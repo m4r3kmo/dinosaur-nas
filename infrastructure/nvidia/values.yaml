@@ -1,0 +1,24 @@
+runtimeClassName: nvidia
+
+failOnInitError: true
+
+migStrategy: none
+
+gfd:
+  enabled: false
+
+nfd:
+  enabled: false
+
+affinity: null
+
+nodeSelector:
+  kubernetes.io/hostname: dinosaur
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

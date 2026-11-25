@@ -1,0 +1,18 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      runtimeClassName: {{ .Values.runtimeClassName }}
+      restartPolicy: Never
+      containers:
+        - name: gpu-test
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - nvidia-smi
+          resources:
+            limits:
+              nvidia.com/gpu: 1

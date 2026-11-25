@@ -1,0 +1,5 @@
+apiVersion: v2
+name: gpu-smoke-test
+description: NVIDIA GPU runtime validation
+type: application
+version: 0.1.0
