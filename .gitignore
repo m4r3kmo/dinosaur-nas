@@ -1,0 +1,18 @@
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+*.secret.yaml
+secrets/
+kubeconfig
+kubeconfig.yaml
+
+# Helm
+*.tgz
+
+# IDE
+.vscode/
+
+# Logs
+*.log
