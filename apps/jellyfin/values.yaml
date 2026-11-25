@@ -23,9 +23,13 @@ service:
   port: 8096
 
 ingress:
-  enabled: false
+  enabled: true
   className: traefik
-  host: jellyfin.home.arpa
+  host: jellyfin.dinosaur.lan
+
+  tls:
+    enabled: true
+    existingSecret: dinosaur-wildcard-tls
 
 persistence:
   config:
