@@ -11,6 +11,3 @@ flannel-backend: vxlan
 flannel-iface: wlp10s0
 
 secrets-encryption: true
-
-disable:
-  - servicelb
