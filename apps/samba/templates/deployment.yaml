@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: samba
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: TZ
+              value: {{ .Values.timezone | quote }}
+            - name: USER
+              value: {{ .Values.samba.username | quote }}
+          ports:
+            - name: smb
+              containerPort: 445
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            tcpSocket:
+              port: smb
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: smb
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - name: media
+              mountPath: /shared
+            - name: config
+              mountPath: /etc/samba/smb.conf
+              subPath: smb.conf
+              readOnly: true
+            - name: credentials
+              mountPath: /etc/samba/users.conf
+              subPath: users.conf
+              readOnly: true
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim }}
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-config
+        - name: credentials
+          secret:
+            secretName: {{ .Values.samba.existingSecret }}
+            defaultMode: 0400

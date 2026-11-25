@@ -1,0 +1,47 @@
+replicaCount: 1
+
+image:
+  repository: jellyfin/jellyfin
+  tag: "12.4"
+  pullPolicy: IfNotPresent
+
+runtimeClassName: nvidia
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+
+env:
+  TZ: Europe/Bratislava
+  NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
+
+service:
+  type: LoadBalancer
+  port: 8096
+
+ingress:
+  enabled: false
+  className: traefik
+  host: jellyfin.home.arpa
+
+persistence:
+  config:
+    storageClassName: local-path
+    size: 20Gi
+  cache:
+    sizeLimit: 20Gi
+  media:
+    existingClaim: dinosaur-media-pvc
+    readOnly: true
+
+resources:
+  requests:
+    cpu: "1"
+    memory: 1Gi
+  limits:
+    cpu: "8"
+    memory: 8Gi
+    nvidia.com/gpu: 1

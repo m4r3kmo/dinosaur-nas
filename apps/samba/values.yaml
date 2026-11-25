@@ -1,0 +1,28 @@
+replicaCount: 1
+
+image:
+  repository: dockurr/samba
+  tag: "4.23.10"
+  pullPolicy: IfNotPresent
+
+timezone: Europe/Bratislava
+
+samba:
+  username: dinosaur
+  shareName: media
+  existingSecret: samba-credentials
+
+service:
+  type: LoadBalancer
+  port: 445
+
+persistence:
+  existingClaim: dinosaur-media-pvc
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi

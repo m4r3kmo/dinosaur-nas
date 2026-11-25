@@ -1,0 +1,6 @@
+apiVersion: v2
+name: samba
+description: Dinosaur NAS SMB file server
+type: application
+version: 0.1.0
+appVersion: "4.23.10"

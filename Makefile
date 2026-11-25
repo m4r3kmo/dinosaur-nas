@@ -174,3 +174,58 @@ test-storage:
 
 clean-storage-test:
 	helm uninstall storage-smoke-test --namespace media
+
+# ---------------------------------------------------------------------------
+# Jellyfin
+# ---------------------------------------------------------------------------
+
+.PHONY: lint-jellyfin template-jellyfin deploy-jellyfin status-jellyfin logs-jellyfin
+
+lint-jellyfin:
+	helm lint ./apps/jellyfin
+
+template-jellyfin:
+	helm template jellyfin \
+		./apps/jellyfin \
+		--namespace media
+
+deploy-jellyfin: storage-verify lint-jellyfin
+	helm upgrade --install jellyfin \
+		./apps/jellyfin \
+		--namespace media \
+		--create-namespace \
+		--wait \
+		--timeout 10m
+
+status-jellyfin:
+	kubectl get deployment,pods,svc,pvc -n media -o wide
+
+logs-jellyfin:
+	kubectl logs -n media deployment/jellyfin --tail=100 -f
+
+# ---------------------------------------------------------------------------
+# Samba SMB
+# ---------------------------------------------------------------------------
+
+.PHONY: lint-samba template-samba deploy-samba status-samba logs-samba
+
+lint-samba:
+	helm lint ./apps/samba
+
+template-samba:
+	helm template samba \
+		./apps/samba \
+		--namespace media
+
+deploy-samba: storage-verify lint-samba
+	helm upgrade --install samba \
+		./apps/samba \
+		--namespace media \
+		--wait \
+		--timeout 5m
+
+status-samba:
+	kubectl get deployment,pods,svc -n media -o wide
+
+logs-samba:
+	kubectl logs -n media deployment/samba --tail=100 -f
