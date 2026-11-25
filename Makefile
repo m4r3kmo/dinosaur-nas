@@ -100,3 +100,15 @@ test-gpu:
 
 clean-gpu-test:
 	helm uninstall gpu-smoke-test --namespace gpu-system
+# ---------------------------------------------------------------------------
+# Storage infrastructure
+# ---------------------------------------------------------------------------
+
+.PHONY: storage-status storage-init
+
+storage-status:
+	lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,UUID,MOUNTPOINTS
+	df -hT
+
+storage-init:
+	sudo bash scripts/storage/prepare-disks.sh "$(CONFIRM)"
