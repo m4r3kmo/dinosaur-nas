@@ -1,0 +1,13 @@
+storageClass:
+  name: dinosaur-storage
+
+volume:
+  name: dinosaur-media-pv
+  capacity: 3500Gi
+  path: /mnt/storage/media
+  node: dinosaur
+  reclaimPolicy: Retain
+
+claim:
+  name: dinosaur-media-pvc
+  accessMode: ReadWriteOnce

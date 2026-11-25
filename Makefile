@@ -126,3 +126,51 @@ storage-dependencies: storage-verify
 	sudo install -m 644 infrastructure/systemd/k3s-storage.conf \
 		/etc/systemd/system/k3s.service.d/storage.conf
 	sudo systemctl daemon-reload
+
+# ---------------------------------------------------------------------------
+# Kubernetes storage
+# ---------------------------------------------------------------------------
+
+.PHONY: storage-layout lint-storage template-storage deploy-storage
+
+storage-layout: storage-verify
+	sudo install -d -m 2775 \
+		-o "$$(id -u)" -g "$$(id -g)" \
+		/mnt/storage/media \
+		/mnt/storage/media/movies \
+		/mnt/storage/media/series \
+		/mnt/storage/media/music
+
+lint-storage:
+	helm lint ./storage/nas-storage
+
+template-storage:
+	helm template nas-storage \
+		./storage/nas-storage \
+		--namespace media
+
+deploy-storage: storage-layout lint-storage
+	helm upgrade --install nas-storage \
+		./storage/nas-storage \
+		--namespace media \
+		--create-namespace
+
+# ---------------------------------------------------------------------------
+# Storage smoke test
+# ---------------------------------------------------------------------------
+
+.PHONY: test-storage clean-storage-test
+
+test-storage:
+	helm upgrade --install storage-smoke-test \
+		./storage/smoke-test \
+		--namespace media \
+		--set securityContext.runAsUser="$$(id -u)" \
+		--set securityContext.runAsGroup="$$(id -g)" \
+		--wait \
+		--wait-for-jobs \
+		--timeout 5m
+	kubectl logs -n media job/storage-smoke-test
+
+clean-storage-test:
+	helm uninstall storage-smoke-test --namespace media

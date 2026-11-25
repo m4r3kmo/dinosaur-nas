@@ -1,0 +1,12 @@
+image:
+  repository: busybox
+  tag: "1.37.0"
+
+storage:
+  existingClaim: dinosaur-media-pvc
+  mountPath: /media
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true

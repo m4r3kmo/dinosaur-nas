@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 120
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: storage-test
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command:
+            - /bin/sh
+            - -ec
+          args:
+            - |
+              echo "Checking filesystem..."
+              df -h /media
+
+              echo "Checking permissions..."
+              id
+              ls -ld /media
+
+              TEST_DIR="$(mktemp -d /media/.storage-test.XXXXXX)"
+              TEST_FILE="${TEST_DIR}/test.txt"
+
+              trap 'rm -f "$TEST_FILE"; rmdir "$TEST_DIR"' EXIT
+
+              echo "Testing write..."
+              echo "Dinosaur NAS storage test" > "$TEST_FILE"
+
+              echo "Testing read..."
+              cat "$TEST_FILE"
+
+              test "$(cat "$TEST_FILE")" = "Dinosaur NAS storage test"
+
+              echo "Testing delete..."
+              rm "$TEST_FILE"
+              test ! -e "$TEST_FILE"
+
+              echo "STORAGE SMOKE TEST PASSED"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: media
+              mountPath: {{ .Values.storage.mountPath }}
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: {{ .Values.storage.existingClaim }}
