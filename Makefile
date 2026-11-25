@@ -112,3 +112,17 @@ storage-status:
 
 storage-init:
 	sudo bash scripts/storage/prepare-disks.sh "$(CONFIRM)"
+
+.PHONY: storage-mount storage-verify storage-dependencies
+
+storage-mount:
+	sudo bash scripts/storage/mount-storage.sh
+
+storage-verify:
+	bash scripts/storage/verify-storage.sh
+
+storage-dependencies: storage-verify
+	sudo mkdir -p /etc/systemd/system/k3s.service.d
+	sudo install -m 644 infrastructure/systemd/k3s-storage.conf \
+		/etc/systemd/system/k3s.service.d/storage.conf
+	sudo systemctl daemon-reload
