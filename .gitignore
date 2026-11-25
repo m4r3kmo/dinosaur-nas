@@ -16,3 +16,13 @@ kubeconfig.yaml
 
 # Logs
 *.log
+
+# Downloader frontend
+node_modules/
+dist/
+
+# Downloader backend
+.venv/
+.state/
+__pycache__/
+*.pyc
