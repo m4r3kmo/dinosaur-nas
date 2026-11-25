@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: dinosaur-downloader
+
+  labels:
+    app: dinosaur-downloader
+
+spec:
+  type: {{ .Values.service.type }}
+
+  selector:
+    app: dinosaur-downloader
+
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP

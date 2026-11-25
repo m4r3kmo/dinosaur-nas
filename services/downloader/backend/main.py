@@ -3,31 +3,50 @@ import shutil
 import sqlite3
 import threading
 
+from pathlib import Path
+from typing import Literal
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from fastshare import FastShareClient
+from media_import import build_destination
+from storage_config import storage_mounted
 
 from download_queue import (
     initialize,
     enqueue,
     list_downloads,
     worker,
+    database,
     STOP_EVENT,
     DOWNLOAD_DIR,
 )
 
 
+APP_VERSION = "0.3.0"
+
+
+# ==========================================
+# Application lifecycle
+# ==========================================
+
 @asynccontextmanager
 async def lifespan(app):
 
-    if not (
-        os.getenv("FASTSHARE_USERNAME")
-        and os.getenv("FASTSHARE_PASSWORD")
-    ):
-        raise RuntimeError("FastShare credentials missing")
+    required_env = (
+        "FASTSHARE_USERNAME",
+        "FASTSHARE_PASSWORD",
+        "JELLYFIN_API_KEY",
+    )
+
+    for variable in required_env:
+        if not os.getenv(variable):
+            raise RuntimeError(
+                f"Missing environment variable: {variable}"
+            )
 
     initialize()
 
@@ -35,8 +54,11 @@ async def lifespan(app):
 
     thread = threading.Thread(
         target=worker,
+        name="download-worker",
         daemon=True,
     )
+
+    app.state.download_worker = thread
 
     thread.start()
 
@@ -50,31 +72,97 @@ async def lifespan(app):
 app = FastAPI(
     title="Dinosaur Downloader",
     description="Dinosaur NAS Download Manager",
-    version="0.2.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
 
-class DownloadRequest(BaseModel):
-    query: str = Field(min_length=2, max_length=200)
-    file_id: str = Field(min_length=1, max_length=64)
+# ==========================================
+# Request models
+# ==========================================
 
+class ImportRequest(BaseModel):
+
+    library: Literal[
+        "movies", "series", "downloads"
+    ] = "downloads"
+
+    title: str | None = Field(
+        default=None,
+        max_length=180,
+    )
+
+    season: int | None = Field(
+        default=None,
+        ge=0,
+        le=999,
+    )
+
+    episode: int | None = Field(
+        default=None,
+        ge=1,
+        le=999,
+    )
+
+
+class DownloadRequest(ImportRequest):
+
+    query: str = Field(
+        min_length=2,
+        max_length=200,
+    )
+
+    file_id: str = Field(
+        min_length=1,
+        max_length=64,
+    )
+
+
+# ==========================================
+# Health check
+# ==========================================
 
 @app.get("/api/health")
 def health():
+
+    thread = getattr(
+        app.state,
+        "download_worker",
+        None,
+    )
+
+    if thread is None or not thread.is_alive():
+        raise HTTPException(
+            status_code=503,
+            detail="Download worker unavailable",
+        )
+
     return {
         "status": "healthy",
         "service": "dinosaur-downloader",
-        "version": "0.2.0",
+        "version": APP_VERSION,
     }
 
 
+# ==========================================
+# FastShare search
+# ==========================================
+
 @app.get("/api/search")
-def search(query: str = Query(min_length=2, max_length=200)):
+def search(
+    query: str = Query(
+        min_length=2,
+        max_length=200,
+    )
+):
 
     try:
         client = FastShareClient()
-        results = client.search(query, pagination=100)
+
+        results = client.search(
+            query,
+            pagination=100,
+        )
 
         return {
             "query": query,
@@ -101,8 +189,18 @@ def search(query: str = Query(min_length=2, max_length=200)):
         )
 
 
+# ==========================================
+# Download queue
+# ==========================================
+
 @app.post("/api/downloads", status_code=202)
 def create_download(request: DownloadRequest):
+
+    if not storage_mounted():
+        raise HTTPException(
+            status_code=503,
+            detail="NAS storage unavailable",
+        )
 
     try:
         client = FastShareClient()
@@ -133,11 +231,28 @@ def create_download(request: DownloadRequest):
         )
 
     try:
-        job_id = enqueue(item)
+        destination = build_destination(
+            filename=item["filename"],
+            library=request.library,
+            title=request.title,
+            season=request.season,
+            episode=request.episode,
+        )
+
+        job_id = enqueue(
+            item,
+            destination,
+        )
 
         return {
             "id": job_id,
             "status": "queued",
+            "destination": destination,
+            "import_status": (
+                "pending"
+                if destination
+                else "not_requested"
+            ),
         }
 
     except sqlite3.IntegrityError:
@@ -146,20 +261,114 @@ def create_download(request: DownloadRequest):
             detail="File already in download queue",
         )
 
-    except ValueError:
+    except ValueError as error:
         raise HTTPException(
             status_code=400,
-            detail="Invalid file information",
+            detail=str(error),
         )
 
 
 @app.get("/api/downloads")
 def downloads():
+
     return list_downloads()
 
 
+# ==========================================
+# Jellyfin media import
+# ==========================================
+
+@app.post(
+    "/api/downloads/{job_id}/import",
+    status_code=202,
+)
+def import_download(
+    job_id: str,
+    request: ImportRequest,
+):
+
+    if not storage_mounted():
+        raise HTTPException(
+            status_code=503,
+            detail="NAS storage unavailable",
+        )
+
+    with database() as db:
+
+        db.execute("BEGIN IMMEDIATE")
+
+        job = db.execute("""
+            SELECT *
+            FROM downloads
+            WHERE id = ?
+        """, (job_id,)).fetchone()
+
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail="Download not found",
+            )
+
+        if (
+            job["status"] != "completed"
+            or job["import_status"] != "not_requested"
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Download is not ready for import",
+            )
+
+        try:
+            destination = build_destination(
+                filename=job["filename"],
+                library=request.library,
+                title=request.title,
+                season=request.season,
+                episode=request.episode,
+            )
+
+            if not destination:
+                raise ValueError(
+                    "Select a media library"
+                )
+
+        except ValueError as error:
+            raise HTTPException(
+                status_code=400,
+                detail=str(error),
+            )
+
+        db.execute("""
+            UPDATE downloads
+            SET destination = ?,
+                import_status = 'pending',
+                import_error = NULL
+            WHERE id = ?
+        """, (
+            destination,
+            job_id,
+        ))
+
+    return {
+        "id": job_id,
+        "destination": destination,
+        "import_status": "pending",
+    }
+
+
+# ==========================================
+# NAS storage
+# ==========================================
+
 @app.get("/api/storage")
 def storage():
+
+    if not storage_mounted():
+        raise HTTPException(
+            status_code=503,
+            detail="NAS storage unavailable",
+        )
+
     usage = shutil.disk_usage(DOWNLOAD_DIR)
 
     return {
@@ -167,3 +376,33 @@ def storage():
         "used": usage.used,
         "free": usage.free,
     }
+
+
+# ==========================================
+# Production React frontend
+# ==========================================
+
+static_dir = os.getenv("DOWNLOADER_STATIC_DIR")
+
+if static_dir:
+
+    frontend_path = Path(static_dir)
+
+    if not frontend_path.is_dir():
+        raise RuntimeError(
+            f"Frontend directory not found: {frontend_path}"
+        )
+
+    if not (frontend_path / "index.html").is_file():
+        raise RuntimeError(
+            f"Frontend index.html not found: {frontend_path}"
+        )
+
+    app.mount(
+        "/",
+        StaticFiles(
+            directory=frontend_path,
+            html=True,
+        ),
+        name="frontend",
+    )

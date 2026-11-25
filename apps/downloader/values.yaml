@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: localhost/dinosaur-downloader
+  tag: "0.3.0"
+  pullPolicy: Never
+
+credentials:
+  existingSecret: downloader-credentials
+
+service:
+  type: ClusterIP
+  port: 8085
+
+jellyfin:
+  url: http://jellyfin.media.svc.cluster.local:8096
+
+persistence:
+  state:
+    storageClass: local-path
+    size: 1Gi
+
+  media:
+    existingClaim: dinosaur-media-pvc
+    mountPath: /mnt/storage/media
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi
+
+nodeSelector:
+  kubernetes.io/hostname: dinosaur

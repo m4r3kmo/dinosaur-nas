@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dinosaur-downloader
+  labels:
+    app: dinosaur-downloader
+
+spec:
+  replicas: {{ .Values.replicaCount }}
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: dinosaur-downloader
+
+  template:
+    metadata:
+      labels:
+        app: dinosaur-downloader
+
+    spec:
+      automountServiceAccountToken: false
+
+      terminationGracePeriodSeconds: 30
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
+        seccompProfile:
+          type: RuntimeDefault
+
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+
+      containers:
+        - name: downloader
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          securityContext:
+            allowPrivilegeEscalation: false
+
+            capabilities:
+              drop:
+                - ALL
+
+          ports:
+            - name: http
+              containerPort: 8085
+              protocol: TCP
+
+          envFrom:
+            - secretRef:
+                name: {{ .Values.credentials.existingSecret }}
+
+          env:
+            - name: TZ
+              value: Europe/Bratislava
+
+            - name: JELLYFIN_URL
+              value: {{ .Values.jellyfin.url | quote }}
+
+            - name: DOWNLOADER_STATE_DIR
+              value: /state
+
+            - name: DOWNLOADER_STATIC_DIR
+              value: /app/frontend
+
+            - name: NAS_MOUNT_PATH
+              value: {{ .Values.persistence.media.mountPath | quote }}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: state
+              mountPath: /state
+
+            - name: media
+              mountPath: {{ .Values.persistence.media.mountPath }}
+
+      volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: dinosaur-downloader-state
+
+        - name: media
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.media.existingClaim }}

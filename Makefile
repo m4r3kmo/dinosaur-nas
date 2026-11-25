@@ -229,3 +229,9 @@ status-samba:
 
 logs-samba:
 	kubectl logs -n media deployment/samba --tail=100 -f
+
+# ---------------------------------------------------------------------------
+# Dinosaur Downloader
+# ---------------------------------------------------------------------------
+
+include make/downloader.mk
