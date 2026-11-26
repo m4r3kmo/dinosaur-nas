@@ -83,6 +83,24 @@ function formatETA(remaining: number, rate?: number) {
     : `${minutes}m ${String(rest).padStart(2, "0")}s`;
 }
 
+function canRemoveTransfer(job: Download) {
+  return (
+    ["failed", "interrupted"].includes(job.status) ||
+    (
+      job.status === "completed" &&
+      ["imported", "not_requested"].includes(job.import_status)
+    )
+  );
+}
+
+function canClearTransfer(job: Download) {
+  return canRemoveTransfer(job) &&
+    (
+      job.status !== "completed" ||
+      job.import_status === "imported"
+    );
+}
+
 function transferCategory(job: Download): TransferFilter {
   if (
     ["failed", "interrupted", "cancelled", "canceled"]
@@ -246,6 +264,9 @@ function App() {
   } | null>(null);
 
   const refreshSequence = useTransferRef(0);
+
+  const [historyBusy, setHistoryBusy] = useState(false);
+  const [historyError, setHistoryError] = useState("");
   const [storage, setStorage] = useState<Storage | null>(null);
 
   const [resolution, setResolution] = useState("All");
@@ -602,6 +623,63 @@ function App() {
     !downloads.some(job => job.source_id === id)
   ).length;
 
+  async function removeTransfer(job: Download) {
+    if (historyBusy || !canRemoveTransfer(job)) return;
+
+    const warning = job.import_status === "not_requested" &&
+      job.status === "completed"
+      ? "\\nManual import from Downloader will no longer be available."
+      : "";
+
+    if (!window.confirm(
+      `Remove ${job.filename} from history?\\n` +
+      "Files on NAS will not be deleted." + warning
+    )) return;
+
+    setHistoryBusy(true);
+    setHistoryError("");
+
+    try {
+      await api(`downloads/${encodeURIComponent(job.id)}`, {
+        method: "DELETE",
+      });
+
+      await refresh();
+    } catch (err) {
+      setHistoryError(String(err));
+    } finally {
+      setHistoryBusy(false);
+    }
+  }
+
+  async function clearHistory() {
+    if (historyBusy) return;
+
+    if (!window.confirm(
+      "Clear imported and failed transfers from history?\\n" +
+      "Files on NAS will not be deleted."
+    )) return;
+
+    setHistoryBusy(true);
+    setHistoryError("");
+
+    try {
+      await api("downloads/history", {
+        method: "DELETE",
+      });
+
+      await refresh();
+    } catch (err) {
+      setHistoryError(String(err));
+    } finally {
+      setHistoryBusy(false);
+    }
+  }
+
+  const clearableCount = downloads.filter(
+    canClearTransfer
+  ).length;
+
   const transferCounts: Record<TransferFilter, number> = {
     all: downloads.length,
     active: downloads.filter(
@@ -636,12 +714,42 @@ function App() {
         order.indexOf(transferCategory(b));
     });
 
+  function scrollToSection(id: string) {
+    const section = document.getElementById(id);
+
+    section?.focus({ preventScroll: true });
+
+    section?.scrollIntoView({
+      behavior: window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches ? "auto" : "smooth",
+      block: "start",
+    });
+  }
+
+  function openTransfers(filter: TransferFilter) {
+    setTransferFilter(filter);
+    scrollToSection("transfer-monitor");
+  }
+
   return (
     <main>
       <header>
         <div>
           <h1 className="brand">
-            <img src={dinosaurLogo} alt="" className="dinosaur-logo" />
+            <button
+              type="button"
+              className="dino-home"
+              title="Home"
+              aria-label="Go to file search"
+              onClick={() => scrollToSection("file-search")}
+            >
+              <img
+                src={dinosaurLogo}
+                alt=""
+                className="dinosaur-logo"
+              />
+            </button>
             <span>DINOSAUR DOWNLOADER</span>
           </h1>
           <p>FILE TRANSFER SYSTEM // NAS-01</p>
@@ -657,7 +765,13 @@ function App() {
       </header>
 
       <div className="stats">
-        <section>
+        <section className="quick-nav-card">
+          <button
+            type="button"
+            className="quick-nav-button"
+            aria-label="Active downloads: open transfer monitor"
+            onClick={() => openTransfers("active")}
+          />
           <small>Active downloads</small>
           <h2>
             {downloads.filter(
@@ -666,7 +780,13 @@ function App() {
           </h2>
         </section>
 
-        <section>
+        <section className="quick-nav-card">
+          <button
+            type="button"
+            className="quick-nav-button"
+            aria-label="Queued: open transfer monitor"
+            onClick={() => openTransfers("queued")}
+          />
           <small>Queued</small>
           <h2>
             {downloads.filter(
@@ -675,7 +795,13 @@ function App() {
           </h2>
         </section>
 
-        <section>
+        <section className="quick-nav-card">
+          <button
+            type="button"
+            className="quick-nav-button"
+            aria-label="Available storage: open transfer monitor"
+            onClick={() => openTransfers("all")}
+          />
           <small>Available storage</small>
           <h2>
             {storage
@@ -687,7 +813,11 @@ function App() {
         </section>
       </div>
 
-      <section className="panel">
+      <section
+        className="panel"
+        id="file-search"
+        tabIndex={-1}
+      >
         <h2>01 / FILE SEARCH</h2>
 
         <form onSubmit={search}>
@@ -873,7 +1003,11 @@ function App() {
           )}
       </section>
 
-      <section className="panel transfer-monitor">
+      <section
+        className="panel transfer-monitor"
+        id="transfer-monitor"
+        tabIndex={-1}
+      >
         <div className="transfer-heading">
           <h2>02 / TRANSFER MONITOR</h2>
           <div className="transfer-throughput">
@@ -908,6 +1042,27 @@ function App() {
           ))}
         </div>
 
+        <div className="history-actions">
+          <button
+            type="button"
+            className="clear-history"
+            disabled={
+              !connected ||
+              historyBusy ||
+              clearableCount === 0
+            }
+            onClick={clearHistory}
+          >
+            Clear history ({clearableCount})
+          </button>
+        </div>
+
+        {historyError && (
+          <p className="error">
+            {publicError(historyError)}
+          </p>
+        )}
+
         {visibleDownloads.length === 0 && (
           <p className="transfer-empty">
             No matching transfers.
@@ -925,11 +1080,24 @@ function App() {
             <div className="download-header">
               <strong>{job.filename}</strong>
 
-              <span
-                className={`status ${job.status}`}
-              >
-                {job.status}
-              </span>
+              <div className="transfer-status-actions">
+                <span className={`status ${job.status}`}>
+                  {job.status}
+                </span>
+
+                {canRemoveTransfer(job) && (
+                  <button
+                    type="button"
+                    className="remove-transfer"
+                    title="Remove from history"
+                    aria-label={`Remove ${job.filename} from history`}
+                    disabled={!connected || historyBusy}
+                    onClick={() => removeTransfer(job)}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             </div>
 
             <progress
@@ -946,7 +1114,8 @@ function App() {
                 {Math.min(100, job.progress).toFixed(1)}%
               </small>
 
-              {job.import_status !== "not_requested" && (
+              {job.status === "completed" &&
+               job.import_status !== "not_requested" && (
                 <span className={`status ${job.import_status}`}>
                   {job.import_status === "imported"
                     ? "✓ Jellyfin imported"
@@ -1181,7 +1350,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.0
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.1
       </footer>
     </main>
   );
