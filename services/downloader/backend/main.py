@@ -27,7 +27,7 @@ from download_queue import (
 )
 
 
-APP_VERSION = "0.5.0"
+APP_VERSION = "0.5.1"
 
 
 # ==========================================
@@ -288,6 +288,72 @@ def create_download(request: DownloadRequest):
 def downloads():
 
     return list_downloads()
+
+
+# ==========================================
+# Transfer history management
+# ==========================================
+
+@app.delete("/api/downloads/history")
+def clear_download_history():
+
+    with database() as db:
+        db.execute("BEGIN IMMEDIATE")
+
+        result = db.execute("""
+            DELETE FROM downloads
+            WHERE status IN ('failed', 'interrupted')
+               OR (
+                   status = 'completed'
+                   AND import_status = 'imported'
+               )
+        """)
+
+        deleted = result.rowcount
+
+    return {"deleted": deleted}
+
+
+@app.delete("/api/downloads/{job_id}")
+def delete_download_history(job_id: str):
+
+    with database() as db:
+        db.execute("BEGIN IMMEDIATE")
+
+        job = db.execute("""
+            SELECT status, import_status
+            FROM downloads
+            WHERE id = ?
+        """, (job_id,)).fetchone()
+
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail="Transfer not found",
+            )
+
+        removable = (
+            job["status"] in ("failed", "interrupted")
+            or (
+                job["status"] == "completed"
+                and job["import_status"] in (
+                    "imported", "not_requested"
+                )
+            )
+        )
+
+        if not removable:
+            raise HTTPException(
+                status_code=409,
+                detail="Transfer or media import is still pending",
+            )
+
+        db.execute("""
+            DELETE FROM downloads
+            WHERE id = ?
+        """, (job_id,))
+
+    return {"deleted": 1, "id": job_id}
 
 
 # ==========================================
