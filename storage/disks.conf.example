@@ -1,0 +1,11 @@
+DISK1="/dev/disk/by-id/REPLACE_WITH_DISK1_ID"
+DISK2="/dev/disk/by-id/REPLACE_WITH_DISK2_ID"
+
+DISK1_MOUNT="/mnt/disk1"
+DISK2_MOUNT="/mnt/disk2"
+
+DISK1_LABEL="dinosaur-data1"
+DISK2_LABEL="dinosaur-data2"
+
+STORAGE_MOUNT="/mnt/storage"
+FILESYSTEM="ext4"

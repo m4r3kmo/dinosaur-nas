@@ -26,3 +26,21 @@ dist/
 .state/
 __pycache__/
 *.pyc
+
+# Local hardware configuration
+/storage/disks.conf
+/storage/fstab.conf
+
+# Private configuration
+*.local.yaml
+*.local.yml
+*.secret.yml
+*.secrets.yaml
+*.secrets.yml
+*.p12
+*.pfx
+*.kubeconfig
+.htpasswd
+
+# Security scan reports
+gitleaks-report.*

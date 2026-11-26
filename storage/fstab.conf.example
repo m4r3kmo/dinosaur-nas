@@ -1,0 +1,3 @@
+UUID=REPLACE_WITH_DISK1_UUID /mnt/disk1 ext4 defaults,noatime,nofail 0 2
+UUID=REPLACE_WITH_DISK2_UUID /mnt/disk2 ext4 defaults,noatime,nofail 0 2
+/mnt/disk1:/mnt/disk2 /mnt/storage fuse.mergerfs defaults,allow_other,cache.files=off,category.create=mfs,minfreespace=20G,nofail,x-systemd.requires-mounts-for=/mnt/disk1,x-systemd.requires-mounts-for=/mnt/disk2 0 0
