@@ -1,0 +1,138 @@
+name: Dinosaur NAS CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+
+  # --------------------------------------------------
+  # Helm validation
+  # --------------------------------------------------
+
+  helm-validation:
+    name: Helm Validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Helm version
+        run: helm version
+
+      - name: Validate local Helm charts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          while IFS= read -r -d '' file; do
+            chart="$(dirname "$file")"
+
+            echo "::group::Validating $chart"
+
+            helm lint "$chart"
+            helm template ci-test "$chart" > /dev/null
+
+            echo "::endgroup::"
+
+          done < <(git ls-files -z -- ':(glob)**/Chart.yaml')
+
+  # --------------------------------------------------
+  # Configuration and code validation
+  # --------------------------------------------------
+
+  code-validation:
+    name: Code Validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install validation dependencies
+        run: |
+          python3 -m venv /tmp/ci-venv
+          /tmp/ci-venv/bin/pip install PyYAML==6.0.2
+
+      - name: Validate YAML, JSON and Python
+        run: |
+          /tmp/ci-venv/bin/python <<'PY'
+          import ast
+          import json
+          import subprocess
+          import yaml
+          from pathlib import Path
+
+          files = subprocess.check_output(
+              ["git", "ls-files", "-z"]
+          ).decode().split("\0")
+
+          for filename in filter(None, files):
+              path = Path(filename)
+
+              if path.suffix in (".yaml", ".yml"):
+                  if "templates" in path.parts:
+                      continue
+
+                  print(f"YAML: {path}")
+                  list(yaml.safe_load_all(path.read_text()))
+
+              elif path.suffix == ".json":
+                  print(f"JSON: {path}")
+                  json.loads(path.read_text())
+
+              elif path.suffix == ".py":
+                  print(f"Python: {path}")
+                  ast.parse(path.read_text())
+
+          print("All syntax checks passed.")
+          PY
+
+      - name: Validate Bash scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          while IFS= read -r -d '' file; do
+            echo "Bash: $file"
+            bash -n "$file"
+          done < <(git ls-files -z -- '*.sh')
+
+  # --------------------------------------------------
+  # Security scanning
+  # --------------------------------------------------
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout full Git history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan repository with Gitleaks
+        run: |
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            -v "$PWD:/repo:ro" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git --redact --log-opts="--all" /repo
