@@ -4,7 +4,7 @@ downloadWorkers: 3
 
 image:
   repository: localhost/dinosaur-downloader
-  tag: "0.4.0"
+  tag: "0.4.1"
   pullPolicy: Never
 
 credentials:
