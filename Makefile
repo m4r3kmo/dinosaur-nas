@@ -56,6 +56,10 @@ help:
 	@$(MAKE) --no-print-directory help-downloader
 	@$(MAKE) --no-print-directory help-cert-manager
 	@$(MAKE) --no-print-directory help-pki
+	@$(MAKE) --no-print-directory help-monitoring
+	@$(MAKE) --no-print-directory help-smartctl
+	@$(MAKE) --no-print-directory help-blackbox
+	@$(MAKE) --no-print-directory help-pki-metrics
 
 # ---------------------------------------------------------------------------
 # Cluster management
@@ -273,3 +277,9 @@ include make/downloader.mk
 # ---------------------------------------------------------------------------
 
 include make/cert-manager.mk
+
+# ---------------------------------------------------------------------------
+# Dinosaur Monitoring
+# ---------------------------------------------------------------------------
+
+include make/monitoring.mk

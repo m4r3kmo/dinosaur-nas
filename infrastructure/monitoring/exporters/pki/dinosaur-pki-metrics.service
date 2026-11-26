@@ -1,0 +1,15 @@
+[Unit]
+Description=Dinosaur NAS PKI Metrics
+
+[Service]
+Type=oneshot
+RuntimeDirectory=dinosaur-metrics
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+ExecStart=/usr/bin/python3 /usr/local/lib/dinosaur-nas/pki-collect.py
+TimeoutStartSec=30s
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/run/dinosaur-metrics
+PrivateTmp=true

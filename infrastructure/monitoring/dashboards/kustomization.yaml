@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    grafana_dashboard: "1"
+
+configMapGenerator:
+  - name: dinosaur-storage-health-dashboard
+    files:
+      - storage-health.json
+
+  - name: dinosaur-gpu-monitoring-dashboard
+    files:
+      - gpu-monitoring.json
+
+  - name: dinosaur-system-overview-dashboard
+    files:
+      - system-overview.json
+
+  - name: dinosaur-services-overview-dashboard
+    files:
+      - services-overview.json
+
+  - name: dinosaur-pki-overview-dashboard
+    files:
+      - pki-overview.json
+
+  - name: dinosaur-main-overview-dashboard
+    files:
+      - main-overview.json

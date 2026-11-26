@@ -1,0 +1,36 @@
+config:
+  device_include: "^sd[a-z]+$"
+
+common:
+  config:
+    smartctl_powermode_check: standby
+    collect_not_more_than_period: 120s
+
+nodeSelector:
+  kubernetes.io/hostname: dinosaur
+
+hostNetwork: false
+
+service:
+  type: ClusterIP
+  port: 80
+
+serviceMonitor:
+  enabled: true
+
+  extraLabels:
+    release: monitoring
+
+  interval: 60s
+  scrapeTimeout: 30s
+
+prometheusRules:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

@@ -1,0 +1,122 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dinosaur-pki-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+
+    - name: dinosaur.pki.ca
+      rules:
+
+        - alert: DinosaurCAExpiringSoon
+          expr: |
+            (
+              dinosaur_pki_ca_expiration_timestamp_seconds
+              - time() < 180 * 86400
+            )
+            and
+            (
+              dinosaur_pki_ca_expiration_timestamp_seconds
+              - time() >= 90 * 86400
+            )
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dinosaur {{ $labels.ca }} CA expires soon"
+            description: "CA expires within 180 days."
+
+        - alert: DinosaurCAExpirationCritical
+          expr: |
+            dinosaur_pki_ca_expiration_timestamp_seconds
+            - time() < 90 * 86400
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Critical CA expiration"
+            description: "CA {{ $labels.ca }} expires within 90 days."
+
+    - name: dinosaur.pki.certificates
+      rules:
+
+        - alert: DinosaurCertificateNotReady
+          expr: |
+            certmanager_certificate_ready_status{
+              condition="True",
+              issuer_name="dinosaur-ca"
+            } == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Certificate {{ $labels.name }} is not ready"
+            description: "Namespace: {{ $labels.exported_namespace }}"
+
+        - alert: DinosaurCertificateRenewalOverdue
+          expr: |
+            (
+              time() -
+              certmanager_certificate_renewal_timestamp_seconds{
+                issuer_name="dinosaur-ca"
+              } > 86400
+            )
+            and
+            (
+              certmanager_certificate_renewal_timestamp_seconds{
+                issuer_name="dinosaur-ca"
+              } > 0
+            )
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate renewal is overdue"
+            description: "Certificate {{ $labels.name }} renewal is overdue by more than 24 hours."
+
+        - alert: DinosaurCertificateMetricsMissing
+          expr: |
+            absent(certmanager_certificate_ready_status{
+              name="dinosaur-wildcard",
+              condition="True"
+            })
+            or
+            absent(certmanager_certificate_ready_status{
+              name="dinosaur-monitoring",
+              condition="True"
+            })
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Certificate metrics are missing"
+            description: "No Ready status metrics for {{ $labels.name }}."
+
+    - name: dinosaur.pki.collector
+      rules:
+
+        - alert: DinosaurPKICollectorDown
+          expr: |
+            (
+              time() -
+              dinosaur_pki_collection_timestamp_seconds > 600
+            )
+            or
+            absent(dinosaur_pki_collection_timestamp_seconds)
+            or
+            absent(dinosaur_pki_ca_expiration_timestamp_seconds{
+              ca="root"
+            })
+            or
+            absent(dinosaur_pki_ca_expiration_timestamp_seconds{
+              ca="intermediate"
+            })
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Dinosaur PKI collector failure"
+            description: "PKI metrics are missing or outdated."

@@ -1,0 +1,285 @@
+fullnameOverride: dinosaur-monitoring
+
+crds:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# Kubernetes alerting rules
+# ---------------------------------------------------------------------------
+
+defaultRules:
+  create: true
+
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+    windows: false
+
+# ---------------------------------------------------------------------------
+# K3s-specific configuration
+# ---------------------------------------------------------------------------
+
+kubeApiServer:
+  enabled: true
+
+kubelet:
+  enabled: true
+
+coreDns:
+  enabled: true
+
+kubeDns:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+windowsMonitoring:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Prometheus
+# ---------------------------------------------------------------------------
+
+prometheus:
+  enabled: true
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: false
+
+  prometheusSpec:
+    replicas: 1
+
+    retention: 15d
+    retentionSize: 15GiB
+
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+
+    walCompression: true
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 2000
+      fsGroup: 2000
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: dinosaur-monitoring
+
+          accessModes:
+            - ReadWriteOnce
+
+          selector:
+            matchLabels:
+              component: prometheus
+
+          resources:
+            requests:
+              storage: 20Gi
+
+# ---------------------------------------------------------------------------
+# Alertmanager
+# ---------------------------------------------------------------------------
+
+alertmanager:
+  enabled: true
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: false
+
+  alertmanagerSpec:
+    replicas: 1
+    retention: 120h
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      runAsGroup: 2000
+      fsGroup: 2000
+
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: dinosaur-monitoring
+
+          accessModes:
+            - ReadWriteOnce
+
+          selector:
+            matchLabels:
+              component: alertmanager
+
+          resources:
+            requests:
+              storage: 2Gi
+
+# ---------------------------------------------------------------------------
+# Grafana
+# ---------------------------------------------------------------------------
+
+grafana:
+  enabled: true
+  replicas: 1
+
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    failureThreshold: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+
+  deploymentStrategy:
+    type: Recreate
+
+  defaultDashboardsEnabled: true
+  defaultDashboardsTimezone: Europe/Bratislava
+
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: false
+
+  persistence:
+    enabled: true
+    type: pvc
+    existingClaim: dinosaur-grafana-pvc
+
+  initChownData:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+  grafana.ini:
+    users:
+      allow_sign_up: false
+
+    auth.anonymous:
+      enabled: false
+
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+
+  sidecar:
+    dashboards:
+      enabled: true
+    datasources:
+      enabled: true
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Prometheus Operator
+# ---------------------------------------------------------------------------
+
+prometheusOperator:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ---------------------------------------------------------------------------
+# Kube State Metrics
+# ---------------------------------------------------------------------------
+
+kubeStateMetrics:
+  enabled: true
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+
+# ---------------------------------------------------------------------------
+# Node Exporter
+# ---------------------------------------------------------------------------
+
+nodeExporter:
+  enabled: true
+
+prometheus-node-exporter:
+
+  extraArgs:
+    - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/containerd/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+    - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|erofs)$
+    - --collector.textfile.directory=/run/dinosaur-metrics
+
+  extraHostVolumeMounts:
+    - name: dinosaur-gpu-metrics
+      hostPath: /run/dinosaur-metrics
+      mountPath: /run/dinosaur-metrics
+      type: DirectoryOrCreate
+      readOnly: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi

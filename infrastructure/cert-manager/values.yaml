@@ -8,7 +8,11 @@ prometheus:
   enabled: true
 
   servicemonitor:
-    enabled: false
+    enabled: true
+    prometheusInstance: monitoring
+    interval: 30s
+    labels:
+      release: monitoring
 
 resources:
   requests:

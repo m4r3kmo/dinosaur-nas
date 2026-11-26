@@ -1,0 +1,85 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dinosaur-blackbox-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: dinosaur.services.health
+      rules:
+
+        - alert: DinosaurServiceDown
+          expr: |
+            probe_success{job="dinosaur-blackbox"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Service {{ $labels.target }} is unavailable"
+            description: "Probe failed for {{ $labels.instance }}."
+
+        - alert: DinosaurProbeMissing
+          expr: |
+            (
+              count(
+                count by (target) (
+                  probe_success{job="dinosaur-blackbox"}
+                )
+              ) or vector(0)
+            ) < 9
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Dinosaur Blackbox metrics are missing"
+            description: "Expected 9 monitored targets."
+
+        - alert: DinosaurServiceSlow
+          expr: |
+            (
+              probe_duration_seconds{job="dinosaur-blackbox"} > 2
+            )
+            and
+            (
+              probe_success{job="dinosaur-blackbox"} == 1
+            )
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Slow response from {{ $labels.target }}"
+            description: "Probe duration is {{ $value }} seconds."
+
+    - name: dinosaur.services.tls
+      rules:
+
+        - alert: DinosaurTLSExpiringSoon
+          expr: |
+            (
+              probe_ssl_earliest_cert_expiry{job="dinosaur-blackbox"}
+              - time() < 21 * 86400
+            )
+            and
+            (
+              probe_ssl_earliest_cert_expiry{job="dinosaur-blackbox"}
+              - time() >= 7 * 86400
+            )
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "TLS certificate expiring soon"
+            description: "Certificate for {{ $labels.target }} expires within 21 days."
+
+        - alert: DinosaurTLSExpirationCritical
+          expr: |
+            probe_ssl_earliest_cert_expiry{job="dinosaur-blackbox"}
+            - time() < 7 * 86400
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Critical TLS certificate expiration"
+            description: "Certificate for {{ $labels.target }} expires within 7 days."

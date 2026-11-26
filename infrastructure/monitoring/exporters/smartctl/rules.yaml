@@ -1,0 +1,83 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dinosaur-smartctl-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+
+spec:
+  groups:
+    - name: dinosaur.storage.health
+      rules:
+
+        - alert: DiskSmartFailure
+          expr: |
+            (smartctl_device_smart_status == 0)
+            * on(instance, device)
+            group_left(model_name, serial_number)
+            smartctl_device
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "SMART failure on {{ $labels.model_name }}"
+            description: "Disk {{ $labels.serial_number }} failed SMART health check."
+
+        - alert: DiskReallocatedSectors
+          expr: |
+            (smartctl_device_attribute{
+              attribute_id="5",
+              attribute_value_type="raw"
+            } > 0)
+            * on(instance, device)
+            group_left(model_name, serial_number)
+            smartctl_device
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Reallocated sectors on {{ $labels.model_name }}"
+            description: "Disk {{ $labels.serial_number }} reports {{ $value }} in SMART attribute 5."
+
+        - alert: DiskUncorrectableSectors
+          expr: |
+            (smartctl_device_attribute{
+              attribute_id=~"197|198",
+              attribute_value_type="raw"
+            } > 0)
+            * on(instance, device)
+            group_left(model_name, serial_number)
+            smartctl_device
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Problematic sectors on {{ $labels.model_name }}"
+            description: "Disk {{ $labels.serial_number }} reports {{ $value }} in {{ $labels.attribute_name }}."
+
+        - alert: DiskHighTemperature
+          expr: |
+            (smartctl_device_temperature{
+              temperature_type="current"
+            } > 50)
+            * on(instance, device)
+            group_left(model_name, serial_number)
+            smartctl_device
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High temperature on {{ $labels.model_name }}"
+            description: "Disk {{ $labels.serial_number }} temperature is {{ $value }} Celsius."
+
+        - alert: SmartExporterDown
+          expr: |
+            up{job=~".*smartctl.*"} == 0
+            or absent(up{job=~".*smartctl.*"})
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "SMART Exporter unavailable"
+            description: "Prometheus cannot collect SMART metrics."

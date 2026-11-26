@@ -1,0 +1,11 @@
+[Unit]
+Description=Dinosaur NAS NVIDIA GPU Metrics
+
+[Service]
+Type=oneshot
+RuntimeDirectory=dinosaur-metrics
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+ExecStart=/usr/bin/python3 /usr/local/lib/dinosaur-nas/nvidia-collect.py
+TimeoutStartSec=20s
+NoNewPrivileges=true

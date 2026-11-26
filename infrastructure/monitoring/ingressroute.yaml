@@ -1,0 +1,74 @@
+# ---------------------------------------------------------------------------
+# Grafana
+# ---------------------------------------------------------------------------
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - kind: Rule
+      match: Host(`grafana.dinosaur.lan`)
+      services:
+        - name: monitoring-grafana
+          port: 80
+
+  tls:
+    secretName: dinosaur-monitoring-tls
+
+---
+# ---------------------------------------------------------------------------
+# Prometheus
+# ---------------------------------------------------------------------------
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - kind: Rule
+      match: Host(`prometheus.dinosaur.lan`)
+      middlewares:
+        - name: monitoring-auth
+      services:
+        - name: dinosaur-monitoring-prometheus
+          port: 9090
+
+  tls:
+    secretName: dinosaur-monitoring-tls
+
+---
+# ---------------------------------------------------------------------------
+# Alertmanager
+# ---------------------------------------------------------------------------
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - kind: Rule
+      match: Host(`alertmanager.dinosaur.lan`)
+      middlewares:
+        - name: monitoring-auth
+      services:
+        - name: dinosaur-monitoring-alertmanager
+          port: 9093
+
+  tls:
+    secretName: dinosaur-monitoring-tls

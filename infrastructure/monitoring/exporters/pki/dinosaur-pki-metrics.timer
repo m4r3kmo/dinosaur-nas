@@ -1,0 +1,10 @@
+[Unit]
+Description=Collect Dinosaur PKI Metrics
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=5min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

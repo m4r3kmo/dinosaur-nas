@@ -1,0 +1,124 @@
+fullnameOverride: dinosaur-blackbox
+
+replicas: 1
+
+automountServiceAccountToken: false
+
+service:
+  type: ClusterIP
+  port: 9115
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+extraConfigmapMounts:
+  - name: dinosaur-root-ca
+    mountPath: /etc/dinosaur-pki
+    configMap: dinosaur-root-ca
+    readOnly: true
+
+config:
+  modules:
+
+    https_200:
+      prober: http
+      timeout: 10s
+      http:
+        method: GET
+        valid_status_codes: [200]
+        preferred_ip_protocol: ip4
+        follow_redirects: false
+        fail_if_not_ssl: true
+        tls_config:
+          ca_file: /etc/dinosaur-pki/ca.crt
+          insecure_skip_verify: false
+
+    https_401:
+      prober: http
+      timeout: 10s
+      http:
+        method: GET
+        valid_status_codes: [401]
+        preferred_ip_protocol: ip4
+        follow_redirects: false
+        fail_if_not_ssl: true
+        tls_config:
+          ca_file: /etc/dinosaur-pki/ca.crt
+          insecure_skip_verify: false
+
+    internal_http:
+      prober: http
+      timeout: 10s
+      http:
+        method: GET
+        valid_status_codes: [200]
+        preferred_ip_protocol: ip4
+        follow_redirects: false
+
+    tcp_connect:
+      prober: tcp
+      timeout: 5s
+      tcp:
+        preferred_ip_protocol: ip4
+
+serviceMonitor:
+  enabled: true
+
+  selfMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 15s
+    labels:
+      release: monitoring
+
+  defaults:
+    interval: 30s
+    scrapeTimeout: 15s
+    labels:
+      release: monitoring
+
+  targets:
+
+    - name: jellyfin-https
+      url: https://jellyfin.dinosaur.lan/health
+      module: https_200
+
+    - name: grafana-https
+      url: https://grafana.dinosaur.lan/api/health
+      module: https_200
+
+    - name: downloader-https
+      url: https://download.dinosaur.lan/
+      module: https_401
+
+    - name: prometheus-https
+      url: https://prometheus.dinosaur.lan/
+      module: https_401
+
+    - name: alertmanager-https
+      url: https://alertmanager.dinosaur.lan/
+      module: https_401
+
+    - name: downloader-backend
+      url: http://dinosaur-downloader.media.svc.cluster.local:8085/api/health
+      module: internal_http
+
+    - name: prometheus-backend
+      url: http://dinosaur-monitoring-prometheus.monitoring.svc.cluster.local:9090/-/ready
+      module: internal_http
+
+    - name: alertmanager-backend
+      url: http://dinosaur-monitoring-alertmanager.monitoring.svc.cluster.local:9093/-/ready
+      module: internal_http
+
+    - name: samba-tcp
+      url: 192.168.100.50:445
+      module: tcp_connect
