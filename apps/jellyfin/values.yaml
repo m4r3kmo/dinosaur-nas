@@ -39,7 +39,7 @@ persistence:
     sizeLimit: 20Gi
   media:
     existingClaim: dinosaur-media-pvc
-    readOnly: true
+    readOnly: false
 
 resources:
   requests:
