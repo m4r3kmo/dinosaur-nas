@@ -106,6 +106,9 @@ function App() {
   const [storage, setStorage] = useState<Storage | null>(null);
 
   const [resolution, setResolution] = useState("All");
+  const [sortOrder, setSortOrder] = useState<
+    "default" | "size-desc" | "size-asc"
+  >("default");
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState("");
@@ -372,11 +375,23 @@ function App() {
     );
   }
 
-  const filteredResults = results.filter(
-    (file) =>
-      resolution === "All" ||
-      file.resolution === resolution
-  );
+  const filteredResults = results
+    .filter(
+      (file) =>
+        resolution === "All" ||
+        file.resolution === resolution
+    )
+    .sort((a, b) => {
+      if (sortOrder === "size-desc") {
+        return b.size - a.size;
+      }
+
+      if (sortOrder === "size-asc") {
+        return a.size - b.size;
+      }
+
+      return 0;
+    });
 
   const selectedCount = selectedIds.filter(id =>
     !downloads.some(job => job.source_id === id)
@@ -464,6 +479,26 @@ function App() {
             )
           )}
         </div>
+
+        {results.length > 0 && (
+          <div className="sort-toolbar">
+            <label htmlFor="result-sort">SORT BY</label>
+
+            <select
+              id="result-sort"
+              value={sortOrder}
+              onChange={(event) =>
+                setSortOrder(
+                  event.target.value as typeof sortOrder
+                )
+              }
+            >
+              <option value="default">Default order</option>
+              <option value="size-desc">Size: largest first</option>
+              <option value="size-asc">Size: smallest first</option>
+            </select>
+          </div>
+        )}
 
         {results.length > 0 && (
           <div className="batch-toolbar">
@@ -870,7 +905,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.4.1
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.4.2
       </footer>
     </main>
   );
