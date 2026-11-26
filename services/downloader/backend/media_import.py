@@ -32,12 +32,116 @@ def validate_title(title):
     return title
 
 
+def normalize_series_title(title):
+    title = validate_title(title)
+
+    match = re.search(
+        r"(?<![A-Za-z0-9])S\d{1,3}[\s._-]*E\d{1,3}(?!\d)",
+        title,
+        flags=re.IGNORECASE,
+    )
+
+    if match:
+        title = title[:match.start()].rstrip(" ._-")
+
+        if "." in title and not re.search(r"\s", title):
+            title = title.replace(".", " ")
+
+        title = re.sub(r"\s+", " ", title).strip()
+
+    return validate_title(title)
+
+
+def normalize_movie_title(title):
+    title = validate_title(title)
+
+    release = re.search(
+        r"[ ._-]+(?:4320p|2160p|1080p|720p|480p|"
+        r"UHD|Blu[ ._-]?Ray|WEB[ ._-]?(?:DL|Rip)|"
+        r"HEVC|[hx][ ._-]?26[45])(?=$|[\s._()-])",
+        title,
+        flags=re.IGNORECASE,
+    )
+
+    if release:
+        title = title[:release.start()].rstrip(" ._-")
+
+        if "." in title and not re.search(r"\s", title):
+            title = title.replace(".", " ")
+
+    title = re.sub(
+        r"(\((?:19|20)\d{2}\))\s*"
+        r"\((?:CZ[- ._]?EN|CZ[- ._]?SK|CZ|EN|SK|"
+        r"CZE|ENG|SVK)\)$",
+        r"\1",
+        title,
+        flags=re.IGNORECASE,
+    )
+
+    return validate_title(title)
+
+
+def series_key(title):
+    match = re.search(r"\s*\(((?:19|20)\d{2})\)$", title)
+    year = match.group(1) if match else None
+
+    if match:
+        title = title[:match.start()]
+
+    key = re.sub(r"[ ._:-]+", " ", title.lower()).strip()
+
+    return key, year
+
+
+def resolve_series_title(title, series_root):
+    if series_root is None:
+        return title
+
+    root = Path(series_root)
+
+    if not root.is_dir():
+        return title
+
+    names = [
+        entry.name
+        for entry in root.iterdir()
+        if entry.is_dir()
+        and not entry.is_symlink()
+        and not entry.name.startswith(".")
+    ]
+
+    if title in names:
+        return title
+
+    key, year = series_key(title)
+    matches = []
+
+    for name in names:
+        existing_key, existing_year = series_key(name)
+
+        if key != existing_key:
+            continue
+
+        if year and existing_year and year != existing_year:
+            continue
+
+        matches.append(name)
+
+    if len(matches) > 1:
+        raise ValueError(
+            "Multiple matching TV shows. Select an existing series."
+        )
+
+    return matches[0] if matches else title
+
+
 def build_destination(
     filename,
     library="downloads",
     title=None,
     season=None,
     episode=None,
+    series_root=None,
 ):
     if library == "downloads":
         return None
@@ -50,11 +154,17 @@ def build_destination(
     title = validate_title(title)
 
     if library == "movies":
+        title = normalize_movie_title(title)
         return str(
             Path("movies") / title / f"{title}{extension}"
         )
 
     if library == "series":
+        title = normalize_series_title(title)
+        title = validate_title(
+            resolve_series_title(title, series_root)
+        )
+
         if (
             season is None
             or episode is None

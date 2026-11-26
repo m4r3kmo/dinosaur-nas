@@ -27,7 +27,7 @@ from download_queue import (
 )
 
 
-APP_VERSION = "0.5.4"
+APP_VERSION = "0.5.5"
 
 
 # ==========================================
@@ -253,6 +253,7 @@ def create_download(request: DownloadRequest):
             title=request.title,
             season=request.season,
             episode=request.episode,
+            series_root=DOWNLOAD_DIR.parent / "series",
         )
 
         job_id = enqueue(
@@ -407,6 +408,7 @@ def import_download(
                 title=request.title,
                 season=request.season,
                 episode=request.episode,
+                series_root=DOWNLOAD_DIR.parent / "series",
             )
 
             if not destination:
@@ -441,6 +443,34 @@ def import_download(
 # ==========================================
 # NAS storage
 # ==========================================
+
+@app.get("/api/library/series")
+def list_series():
+
+    if not storage_mounted():
+        raise HTTPException(
+            status_code=503,
+            detail="NAS storage unavailable",
+        )
+
+    series_dir = DOWNLOAD_DIR.parent / "series"
+
+    if not series_dir.exists():
+        return {"series": []}
+
+    return {
+        "series": sorted(
+            (
+                entry.name
+                for entry in series_dir.iterdir()
+                if entry.is_dir()
+                and not entry.is_symlink()
+                and not entry.name.startswith(".")
+            ),
+            key=str.casefold,
+        )
+    }
+
 
 @app.get("/api/storage")
 def storage():

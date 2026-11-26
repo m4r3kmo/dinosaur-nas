@@ -285,6 +285,9 @@ function App() {
     useState<Library>("movies");
 
   const [title, setTitle] = useState("");
+  const [existingSeries, setExistingSeries] = useState<string[]>([]);
+  const [seriesLookupFailed, setSeriesLookupFailed] = useState(false);
+
   const [season, setSeason] = useState(1);
   const [episode, setEpisode] = useState(1);
 
@@ -493,6 +496,126 @@ function App() {
     }
   }
 
+  function normalizeMovieTitle(value: string) {
+    let name = value.trim();
+
+    const release = name.match(
+      /[ ._-]+(?:4320p|2160p|1080p|720p|480p|UHD|Blu[ ._-]?Ray|WEB[ ._-]?(?:DL|Rip)|HEVC|[hx][ ._-]?26[45])(?=$|[\s._()-])/i
+    );
+
+    if (release && release.index !== undefined) {
+      name = name
+        .slice(0, release.index)
+        .replace(/[ ._-]+$/, "");
+
+      if (name.includes(".") && !/\s/.test(name)) {
+        name = name.replace(/\./g, " ");
+      }
+    }
+
+    return name.replace(
+      /(\((?:19|20)\d{2}\))\s*\((?:CZ[- ._]?EN|CZ[- ._]?SK|CZ|EN|SK|CZE|ENG|SVK)\)$/i,
+      "$1"
+    ).trim();
+  }
+
+  function normalizeSeriesTitle(value: string) {
+    const match = value.match(
+      /(?<![A-Za-z0-9])S\d{1,3}[\s._-]*E\d{1,3}(?!\d)/i
+    );
+
+    if (!match || match.index === undefined) {
+      return value.trim();
+    }
+
+    let name = value
+      .slice(0, match.index)
+      .replace(/[ ._-]+$/, "");
+
+    if (name.includes(".") && !/\s/.test(name)) {
+      name = name.replace(/\./g, " ");
+    }
+
+    return name.replace(/\s+/g, " ").trim();
+  }
+
+  function seriesKey(value: string) {
+    const match = value.match(
+      /\s*\(((?:19|20)\d{2})\)$/
+    );
+
+    const name = match
+      ? value.slice(0, match.index ?? 0)
+      : value;
+
+    return {
+      key: name.toLowerCase()
+        .replace(/[ ._:-]+/g, " ").trim(),
+      year: match?.[1] || null,
+    };
+  }
+
+  function resolveSeriesTitle(value: string) {
+    const name = normalizeSeriesTitle(value);
+
+    if (existingSeries.includes(name)) {
+      return name;
+    }
+
+    const incoming = seriesKey(name);
+
+    const matches = existingSeries.filter(existing => {
+      const candidate = seriesKey(existing);
+
+      return candidate.key === incoming.key &&
+        (!candidate.year ||
+         !incoming.year ||
+         candidate.year === incoming.year);
+    });
+
+    return matches.length === 1 ? matches[0] : name;
+  }
+
+  async function loadExistingSeries() {
+    setSeriesLookupFailed(false);
+
+    try {
+      const response = await api("library/series") as {
+        series: string[];
+      };
+
+      setExistingSeries(response.series);
+    } catch {
+      setExistingSeries([]);
+      setSeriesLookupFailed(true);
+    }
+  }
+
+  function initializeMediaSelection(filename: string) {
+    const name = fileTitle(filename);
+
+    const match = name.match(
+      /(?<![A-Za-z0-9])S(\d{1,3})[\s._-]*E(\d{1,3})(?!\d)/i
+    );
+
+    const seriesTitle = normalizeSeriesTitle(name);
+
+    if (match && Number(match[2]) > 0 && seriesTitle) {
+      setLibrary("series");
+      setTitle(seriesTitle);
+      setSeason(Number(match[1]));
+      setEpisode(Number(match[2]));
+    } else {
+      setLibrary("movies");
+      setTitle(normalizeMovieTitle(name));
+      setSeason(1);
+      setEpisode(1);
+    }
+
+    setDialogError("");
+    void loadExistingSeries();
+  }
+
   function openDownload(file: Result) {
     setSelection({
       mode: "download",
@@ -501,11 +624,7 @@ function App() {
       query: searchedQuery,
     });
 
-    setLibrary("movies");
-    setTitle(fileTitle(file.filename));
-    setSeason(1);
-    setEpisode(1);
-    setDialogError("");
+    initializeMediaSelection(file.filename);
   }
 
   function openImport(job: Download) {
@@ -515,11 +634,7 @@ function App() {
       filename: job.filename,
     });
 
-    setLibrary("movies");
-    setTitle(fileTitle(job.filename));
-    setSeason(1);
-    setEpisode(1);
-    setDialogError("");
+    initializeMediaSelection(job.filename);
   }
 
   async function submitSelection(
@@ -545,7 +660,9 @@ function App() {
       title:
         library === "downloads"
           ? null
-          : title.trim(),
+          : library === "series"
+            ? resolveSeriesTitle(title)
+            : normalizeMovieTitle(title),
       season:
         library === "series" ? season : null,
       episode:
@@ -595,16 +712,18 @@ function App() {
         ?.toLowerCase() || "";
 
     if (library === "movies") {
-      return `/media/movies/${title}/${title}${extension}`;
+      const movieTitle = normalizeMovieTitle(title);
+      return `/media/movies/${movieTitle}/${movieTitle}${extension}`;
     }
 
     if (library === "series") {
+      const seriesTitle = resolveSeriesTitle(title);
       const s = String(season).padStart(2, "0");
       const e = String(episode).padStart(2, "0");
 
       return (
-        `/media/series/${title}/Season ${s}/` +
-        `${title} S${s}E${e}${extension}`
+        `/media/series/${seriesTitle}/Season ${s}/` +
+        `${seriesTitle} S${s}E${e}${extension}`
       );
     }
 
@@ -1275,6 +1394,41 @@ function App() {
 
               {library !== "downloads" && (
                 <>
+                  {library === "series" && (
+                    <>
+                      <label htmlFor="existing-series">
+                        Existing TV show
+                      </label>
+
+                      <select
+                        id="existing-series"
+                        value=""
+                        disabled={submitting}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setTitle(e.target.value);
+                          }
+                        }}
+                      >
+                        <option value="">
+                          Create new or select existing
+                        </option>
+
+                        {existingSeries.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+
+                      {seriesLookupFailed && (
+                        <small>
+                          Series list unavailable. Enter title manually.
+                        </small>
+                      )}
+                    </>
+                  )}
+
                   <label htmlFor="media-title">
                     {library === "movies"
                       ? "Movie title and year"
@@ -1379,7 +1533,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.4
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.5
       </footer>
     </main>
   );
