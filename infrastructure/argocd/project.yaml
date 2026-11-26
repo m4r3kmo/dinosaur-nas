@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: dinosaur-media
+  namespace: argocd
+spec:
+  description: Dinosaur NAS media applications
+
+  sourceRepos:
+    - https://github.com/m4r3kmo/dinosaur-nas.git
+
+  destinations:
+    - namespace: media
+      server: https://kubernetes.default.svc
+
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: PersistentVolumeClaim
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: traefik.io
+      kind: IngressRoute
+    - group: traefik.io
+      kind: Middleware

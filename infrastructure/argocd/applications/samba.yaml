@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: samba
+  namespace: argocd
+spec:
+  project: dinosaur-media
+
+  source:
+    repoURL: https://github.com/m4r3kmo/dinosaur-nas.git
+    targetRevision: main
+    path: apps/samba
+
+    helm:
+      releaseName: samba
+      valueFiles:
+        - values.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: media
+
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=false
+      - FailOnSharedResource=true
