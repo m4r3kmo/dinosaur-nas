@@ -264,6 +264,7 @@ function App() {
   } | null>(null);
 
   const refreshSequence = useTransferRef(0);
+  const searchGeneration = useTransferRef(0);
 
   const [historyBusy, setHistoryBusy] = useState(false);
   const [historyError, setHistoryError] = useState("");
@@ -394,6 +395,8 @@ function App() {
 
     if (term.length < 2 || batchBusy || loading) return;
 
+    const generation = ++searchGeneration.current;
+
     setLoading(true);
     setError("");
 
@@ -402,14 +405,20 @@ function App() {
         `search?query=${encodeURIComponent(term)}`
       );
 
+      if (generation !== searchGeneration.current) return;
+
       setResults(data.results);
       setSelectedIds([]);
       setBatchMessage("");
       setSearchedQuery(term);
     } catch (err) {
-      setError(String(err));
+      if (generation === searchGeneration.current) {
+        setError(String(err));
+      }
     } finally {
-      setLoading(false);
+      if (generation === searchGeneration.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -430,6 +439,8 @@ function App() {
     );
 
     if (!files.length) return;
+
+    const generation = searchGeneration.current;
 
     setBatchBusy(true);
     setBatchMessage("");
@@ -468,10 +479,12 @@ function App() {
         }
       }
 
-      setBatchMessage(`${queued} / ${files.length} files queued`);
+      if (generation === searchGeneration.current) {
+        setBatchMessage(`${queued} / ${files.length} files queued`);
 
-      if (failed.length) {
-        setError(failed.join("\n"));
+        if (failed.length) {
+          setError(failed.join("\n"));
+        }
       }
 
       await refresh();
@@ -714,6 +727,22 @@ function App() {
         order.indexOf(transferCategory(b));
     });
 
+  function goHome() {
+    searchGeneration.current++;
+
+    setQuery("");
+    setSearchedQuery("");
+    setResults([]);
+    setSelectedIds([]);
+    setBatchMessage("");
+    setResolution("All");
+    setSortOrder("default");
+    setError("");
+    setLoading(false);
+
+    scrollToSection("file-search");
+  }
+
   function scrollToSection(id: string) {
     const section = document.getElementById(id);
 
@@ -742,7 +771,7 @@ function App() {
               className="dino-home"
               title="Home"
               aria-label="Go to file search"
-              onClick={() => scrollToSection("file-search")}
+              onClick={goHome}
             >
               <img
                 src={dinosaurLogo}
@@ -1350,7 +1379,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.1
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.2
       </footer>
     </main>
   );
