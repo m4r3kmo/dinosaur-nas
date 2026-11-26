@@ -634,13 +634,22 @@ function App() {
           )}
       </section>
 
-      <section className="panel">
-        <h2>02 / TRANSFER MONITOR</h2>
+      <section className="panel transfer-monitor">
+        <div className="transfer-heading">
+          <h2>02 / TRANSFER MONITOR</h2>
+          <span>{downloads.length} FILES</span>
+        </div>
 
         {downloads.length === 0 && (
           <p>No downloads yet.</p>
         )}
 
+        <div
+          className="transfer-list"
+          role="region"
+          aria-label="Transfer history"
+          tabIndex={0}
+        >
         {downloads.map((job) => (
           <div className="download" key={job.id}>
             <div className="download-header">
@@ -658,41 +667,23 @@ function App() {
               max={100}
             />
 
-            <div className="download-header">
+            <div className="transfer-meta">
               <small>
-                {formatSize(job.downloaded)} /{" "}
-                {formatSize(job.size)}
+                {job.status === "completed"
+                  ? formatSize(job.size)
+                  : `${formatSize(job.downloaded)} / ${formatSize(job.size)}`}
+                {" · "}
+                {Math.min(100, job.progress).toFixed(1)}%
               </small>
 
-              <small>
-                {job.progress.toFixed(1)} %
-              </small>
-            </div>
-
-            {job.destination && (
-              <div className="destination-info">
-                <small>Destination</small>
-                <div>/media/{job.destination}</div>
-              </div>
-            )}
-
-            {job.import_status !== "not_requested" && (
-              <div className="import-info">
-                <small>Jellyfin import</small>
-
-                <span
-                  className={`status ${job.import_status}`}
-                >
-                  {job.import_status.replace(/_/g, " ")}
+              {job.import_status !== "not_requested" && (
+                <span className={`status ${job.import_status}`}>
+                  {job.import_status === "imported"
+                    ? "✓ Jellyfin imported"
+                    : `Import: ${job.import_status.replace(/_/g, " ")}`}
                 </span>
-              </div>
-            )}
-
-            {job.import_status === "imported" && (
-              <p className="success-text">
-                ✓ Imported · Jellyfin scan requested
-              </p>
-            )}
+              )}
+            </div>
 
             {job.status === "completed" &&
               job.import_status === "not_requested" && (
@@ -716,6 +707,7 @@ function App() {
             )}
           </div>
         ))}
+        </div>
       </section>
 
       {selection && (
@@ -905,7 +897,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.4.2
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.4.3
       </footer>
     </main>
   );
