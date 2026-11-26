@@ -811,3 +811,147 @@ button:disabled {
     font-size: 16px;
   }
 }
+
+/* ==================================================
+   COMPACT SEARCH RESULTS - V0.4.1
+   ================================================== */
+
+.panel article {
+  padding: 12px;
+  margin: 10px 0;
+  gap: 12px;
+  min-width: 0;
+}
+
+.result-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.result-info > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.result-info strong {
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.result-info p {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+.result-info .thumbnail {
+  width: 144px;
+  height: 96px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border: 1px solid #303a30;
+}
+
+.panel article > button {
+  width: auto;
+  min-height: 38px;
+  padding: 8px 16px;
+  font-size: 13px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Mobile search result cards */
+
+@media (max-width: 650px) {
+  .panel article {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: start;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .panel article > .result-info {
+    display: contents;
+  }
+
+  .result-info .thumbnail {
+    grid-column: 1;
+    grid-row: 1;
+    width: 112px;
+    height: 84px;
+    object-fit: cover;
+  }
+
+  .result-info > div {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    min-width: 0;
+  }
+
+  article:not(:has(.thumbnail)) .result-info > div {
+    grid-column: 1 / -1;
+  }
+
+  .result-info strong {
+    display: block;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .result-info p {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .result-info .file-select {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: auto;
+    min-height: 44px;
+  }
+
+  .file-select::after {
+    content: "Select";
+    font-size: 11px;
+    color: #899389;
+  }
+
+  input.file-checkbox {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+  }
+
+  .panel article > button {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+    align-self: center;
+    width: auto;
+    min-height: 44px;
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .batch-toolbar {
+    padding: 10px;
+    gap: 6px;
+    margin: 12px 0;
+  }
+
+  .batch-toolbar button {
+    font-size: 12px;
+    padding: 8px;
+  }
+}

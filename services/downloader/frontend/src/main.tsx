@@ -870,7 +870,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.4.0
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.4.1
       </footer>
     </main>
   );
