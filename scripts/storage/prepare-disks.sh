@@ -84,8 +84,8 @@ prepare_disk() {
 }
 
 # Validate both disks before making any changes.
-validate_disk "$DISK1" "DISK1_SERIAL"
-validate_disk "$DISK2" "DISK2_SERIAL"
+validate_disk "$DISK1" "${DISK1_SERIAL:?Missing DISK1_SERIAL}"
+validate_disk "$DISK2" "${DISK2_SERIAL:?Missing DISK2_SERIAL}"
 
 prepare_disk "$DISK1" "$DISK1_LABEL"
 prepare_disk "$DISK2" "$DISK2_LABEL"
