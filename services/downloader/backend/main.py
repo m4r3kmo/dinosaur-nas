@@ -27,7 +27,7 @@ from download_queue import (
 )
 
 
-APP_VERSION = "0.4.1"
+APP_VERSION = "0.4.2"
 
 
 # ==========================================
