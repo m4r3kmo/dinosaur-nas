@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
+import dinosaurLogo from "./dinosaur.svg";
 
 type Library = "movies" | "series" | "downloads";
 
@@ -85,8 +86,20 @@ async function api<T>(
   return data;
 }
 
+
+function publicError(message: string) {
+  if (/fast[\s._-]*share|https?:\/\//i.test(message)) {
+    return "Remote service request failed. Please try again.";
+  }
+
+  return message;
+}
+
 function App() {
   const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchMessage, setBatchMessage] = useState("");
   const [searchedQuery, setSearchedQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [downloads, setDownloads] = useState<Download[]>([]);
@@ -150,7 +163,7 @@ function App() {
 
     const term = query.trim();
 
-    if (term.length < 2) return;
+    if (term.length < 2 || batchBusy || loading) return;
 
     setLoading(true);
     setError("");
@@ -161,11 +174,80 @@ function App() {
       );
 
       setResults(data.results);
+      setSelectedIds([]);
+      setBatchMessage("");
       setSearchedQuery(term);
     } catch (err) {
       setError(String(err));
     } finally {
       setLoading(false);
+    }
+  }
+
+  function toggleFile(id: string) {
+    setSelectedIds(previous =>
+      previous.includes(id)
+        ? previous.filter(item => item !== id)
+        : [...previous, id]
+    );
+  }
+
+  async function queueSelected() {
+    if (batchBusy || loading || !connected) return;
+
+    const files = results.filter(file =>
+      selectedIds.includes(file.id) &&
+      !downloads.some(job => job.source_id === file.id)
+    );
+
+    if (!files.length) return;
+
+    setBatchBusy(true);
+    setBatchMessage("");
+    setError("");
+
+    let queued = 0;
+    const failed: string[] = [];
+
+    try {
+      for (const file of files) {
+        try {
+          await api("downloads", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: searchedQuery,
+              file_id: file.id,
+              library: "downloads",
+              title: null,
+              season: null,
+              episode: null,
+            }),
+          });
+
+          queued++;
+
+          setSelectedIds(previous =>
+            previous.filter(id => id !== file.id)
+          );
+        } catch (err) {
+          failed.push(
+            `${file.filename}: ${publicError(String(err))}`
+          );
+        }
+      }
+
+      setBatchMessage(`${queued} / ${files.length} files queued`);
+
+      if (failed.length) {
+        setError(failed.join("\n"));
+      }
+
+      await refresh();
+    } finally {
+      setBatchBusy(false);
     }
   }
 
@@ -296,20 +378,27 @@ function App() {
       file.resolution === resolution
   );
 
+  const selectedCount = selectedIds.filter(id =>
+    !downloads.some(job => job.source_id === id)
+  ).length;
+
   return (
     <main>
       <header>
         <div>
-          <h1>🦖 Dinosaur Downloader</h1>
-          <p>FastShare · Dinosaur NAS</p>
+          <h1 className="brand">
+            <img src={dinosaurLogo} alt="" className="dinosaur-logo" />
+            <span>DINOSAUR DOWNLOADER</span>
+          </h1>
+          <p>FILE TRANSFER SYSTEM // NAS-01</p>
         </div>
 
         <span
           className={connected ? "online" : "offline"}
         >
           {connected
-            ? "● Backend online"
-            : "● Backend offline"}
+            ? "● SYSTEM ONLINE"
+            : "● SYSTEM OFFLINE"}
         </span>
       </header>
 
@@ -345,17 +434,17 @@ function App() {
       </div>
 
       <section className="panel">
-        <h2>Search FastShare</h2>
+        <h2>01 / FILE SEARCH</h2>
 
         <form onSubmit={search}>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for a video..."
+            placeholder="Search files..."
             maxLength={200}
           />
 
-          <button disabled={loading || !connected}>
+          <button disabled={loading || batchBusy || !connected}>
             {loading ? "Searching..." : "Search"}
           </button>
         </form>
@@ -376,7 +465,65 @@ function App() {
           )}
         </div>
 
-        {error && <p className="error">{error}</p>}
+        {results.length > 0 && (
+          <div className="batch-toolbar">
+            <span className="selection-counter">
+              {selectedCount} FILES SELECTED
+            </span>
+
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={batchBusy || loading}
+              onClick={() => setSelectedIds(previous =>
+                Array.from(new Set([
+                  ...previous,
+                  ...filteredResults
+                    .filter(file =>
+                      !downloads.some(job => job.source_id === file.id)
+                    )
+                    .map(file => file.id)
+                ]))
+              )}
+            >
+              Select visible
+            </button>
+
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={batchBusy}
+              onClick={() => setSelectedIds([])}
+            >
+              Clear
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                batchBusy || loading ||
+                !connected || selectedCount === 0
+              }
+              onClick={queueSelected}
+            >
+              {batchBusy
+                ? "Queuing..."
+                : `↓ Queue selected (${selectedCount})`}
+            </button>
+          </div>
+        )}
+
+        {batchMessage && (
+          <p className="success-text" role="status">
+            {batchMessage}
+          </p>
+        )}
+
+        {error && (
+          <p className="error batch-error">
+            {publicError(error)}
+          </p>
+        )}
 
         {filteredResults.map((file) => {
           const exists = downloads.some(
@@ -387,8 +534,30 @@ function App() {
             safeThumbnail(file.thumbnail);
 
           return (
-            <article key={file.id}>
+            <article
+              key={file.id}
+              className={
+                !exists && selectedIds.includes(file.id)
+                  ? "result-selected"
+                  : ""
+              }
+            >
               <div className="result-info">
+                <label className="file-select">
+                  <input
+                    type="checkbox"
+                    className="file-checkbox"
+                    aria-label={`Select ${file.filename}`}
+                    checked={
+                      !exists && selectedIds.includes(file.id)
+                    }
+                    disabled={
+                      exists || batchBusy ||
+                      loading || !connected
+                    }
+                    onChange={() => toggleFile(file.id)}
+                  />
+                </label>
                 {thumbnail && (
                   <img
                     className="thumbnail"
@@ -415,7 +584,7 @@ function App() {
               </div>
 
               <button
-                disabled={exists || !connected}
+                disabled={exists || batchBusy || loading || !connected}
                 onClick={() => openDownload(file)}
               >
                 {exists ? "Added" : "↓ Download"}
@@ -431,7 +600,7 @@ function App() {
       </section>
 
       <section className="panel">
-        <h2>Download queue</h2>
+        <h2>02 / TRANSFER MONITOR</h2>
 
         {downloads.length === 0 && (
           <p>No downloads yet.</p>
@@ -502,12 +671,12 @@ function App() {
               )}
 
             {job.error && (
-              <p className="error">{job.error}</p>
+              <p className="error">{publicError(job.error)}</p>
             )}
 
             {job.import_error && (
               <p className="error">
-                Import error: {job.import_error}
+                Import error: {publicError(job.import_error)}
               </p>
             )}
           </div>
@@ -671,7 +840,7 @@ function App() {
               )}
 
               {dialogError && (
-                <p className="error">{dialogError}</p>
+                <p className="error">{publicError(dialogError)}</p>
               )}
 
               <div className="modal-actions">
@@ -701,7 +870,7 @@ function App() {
       )}
 
       <footer>
-        Dinosaur NAS · Downloader v0.3.0
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.4.0
       </footer>
     </main>
   );

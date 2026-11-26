@@ -1,8 +1,10 @@
 replicaCount: 1
 
+downloadWorkers: 3
+
 image:
   repository: localhost/dinosaur-downloader
-  tag: "0.3.0"
+  tag: "0.4.0"
   pullPolicy: Never
 
 credentials:

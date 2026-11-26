@@ -62,6 +62,9 @@ spec:
                 name: {{ .Values.credentials.existingSecret }}
 
           env:
+            - name: DOWNLOAD_WORKERS
+              value: {{ .Values.downloadWorkers | quote }}
+
             - name: TZ
               value: Europe/Bratislava
 

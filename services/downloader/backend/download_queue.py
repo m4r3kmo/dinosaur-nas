@@ -1,4 +1,5 @@
 import os
+import shutil
 from storage_config import storage_mounted
 import uuid
 import sqlite3
@@ -176,13 +177,19 @@ def list_downloads():
     return results
 
 
+def import_worker():
+    print("Import worker started", flush=True)
+
+    while not STOP_EVENT.is_set():
+        process_import(database, DOWNLOAD_DIR)
+        STOP_EVENT.wait(2)
+
+
 def worker():
     print("Download worker started", flush=True)
 
     while not STOP_EVENT.is_set():
 
-        # Process completed downloads waiting for media import.
-        process_import(database, DOWNLOAD_DIR)
 
         # Select the next queued download.
         with database() as db:
@@ -195,6 +202,17 @@ def worker():
                 ORDER BY created_at ASC
                 LIMIT 1
             """).fetchone()
+
+            if row and storage_mounted():
+                reserved = db.execute(
+                    "SELECT COALESCE(SUM(size), 0) "
+                    "FROM downloads WHERE status = 'running'"
+                ).fetchone()[0]
+
+                free = shutil.disk_usage(DOWNLOAD_DIR).free
+
+                if reserved and reserved + row["size"] > free:
+                    row = None
 
             if row:
                 job = dict(row)

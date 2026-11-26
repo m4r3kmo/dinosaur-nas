@@ -20,13 +20,14 @@ from download_queue import (
     enqueue,
     list_downloads,
     worker,
+    import_worker,
     database,
     STOP_EVENT,
     DOWNLOAD_DIR,
 )
 
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.4.0"
 
 
 # ==========================================
@@ -52,21 +53,40 @@ async def lifespan(app):
 
     STOP_EVENT.clear()
 
-    thread = threading.Thread(
-        target=worker,
-        name="download-worker",
-        daemon=True,
+    parallel = int(os.getenv("DOWNLOAD_WORKERS", "1"))
+
+    if not 1 <= parallel <= 8:
+        raise RuntimeError("DOWNLOAD_WORKERS must be between 1 and 8")
+
+    workers = [
+        threading.Thread(
+            target=worker,
+            name=f"download-worker-{index + 1}",
+            daemon=True,
+        )
+        for index in range(parallel)
+    ]
+
+    workers.append(
+        threading.Thread(
+            target=import_worker,
+            name="media-import-worker",
+            daemon=True,
+        )
     )
 
-    app.state.download_worker = thread
+    app.state.workers = workers
 
-    thread.start()
+    for thread in workers:
+        thread.start()
 
     try:
         yield
     finally:
         STOP_EVENT.set()
-        thread.join(timeout=5)
+
+        for thread in workers:
+            thread.join(timeout=2)
 
 
 app = FastAPI(
@@ -125,16 +145,12 @@ class DownloadRequest(ImportRequest):
 @app.get("/api/health")
 def health():
 
-    thread = getattr(
-        app.state,
-        "download_worker",
-        None,
-    )
+    workers = getattr(app.state, "workers", [])
 
-    if thread is None or not thread.is_alive():
+    if not workers or not all(t.is_alive() for t in workers):
         raise HTTPException(
             status_code=503,
-            detail="Download worker unavailable",
+            detail="Downloader worker unavailable",
         )
 
     return {
@@ -185,7 +201,7 @@ def search(
     except Exception:
         raise HTTPException(
             status_code=502,
-            detail="FastShare search failed",
+            detail="Remote search service unavailable",
         )
 
 
@@ -213,7 +229,7 @@ def create_download(request: DownloadRequest):
     except Exception:
         raise HTTPException(
             status_code=502,
-            detail="FastShare search failed",
+            detail="Remote search service unavailable",
         )
 
     item = next(
