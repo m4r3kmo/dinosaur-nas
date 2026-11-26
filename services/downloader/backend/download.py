@@ -37,7 +37,7 @@ def download_file(client, item, destination):
     if (
         parsed.scheme != "https"
         or not re.fullmatch(
-            r"data[0-9]+\.fastshare\.cloud",
+            r"(?:data[0-9]*|s[0-9]+)\.fastshare\.cloud",
             parsed.hostname or "",
         )
         or parsed.username

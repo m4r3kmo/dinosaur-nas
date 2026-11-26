@@ -304,15 +304,40 @@ def worker():
             )
 
         except Exception as error:
+            safe_messages = {
+                "Authentication required",
+                "Unexpected download URL",
+                "Invalid filename",
+                "Invalid authentication token",
+                "Unexpected token format",
+                "File already exists",
+                "Not enough free disk space",
+                "Unexpected HTTP status",
+                "Unexpected response type",
+                "Unexpected file size",
+                "File exceeds expected size",
+                "Incomplete download",
+                "Storage unavailable",
+                "Unexpected symbolic link",
+            }
+
+            reason = type(error).__name__
+
+            if isinstance(error, RuntimeError):
+                if str(error) in safe_messages:
+                    reason = str(error)
+                elif str(error) == "FastShare authentication failed":
+                    reason = "Remote authentication failed"
+
             set_status(
                 job["id"],
                 "failed",
-                type(error).__name__,
+                reason,
             )
 
             print(
                 f"Download failed: {job['id']} "
-                f"({type(error).__name__})",
+                f"({reason})",
                 flush=True,
             )
 
