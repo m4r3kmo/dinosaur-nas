@@ -1,0 +1,99 @@
+fullnameOverride: argocd
+
+global:
+  domain: argocd.dinosaur.lan
+
+configs:
+  cm:
+    create: true
+    admin.enabled: true
+    users.anonymous.enabled: false
+    timeout.reconciliation: 180s
+
+  params:
+    server.insecure: true
+
+crds:
+  install: true
+  keep: true
+
+controller:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      additionalLabels:
+        release: monitoring
+
+server:
+  replicas: 1
+
+  service:
+    type: ClusterIP
+
+  ingress:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      additionalLabels:
+        release: monitoring
+
+repoServer:
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      interval: 30s
+      additionalLabels:
+        release: monitoring
+
+redis:
+  enabled: true
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+redis-ha:
+  enabled: false
+
+dex:
+  enabled: false
+
+applicationSet:
+  enabled: true
+
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: monitoring
+
+notifications:
+  enabled: false
