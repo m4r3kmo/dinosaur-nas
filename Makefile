@@ -226,12 +226,8 @@ template-jellyfin:
 		--namespace media
 
 deploy-jellyfin: storage-verify lint-jellyfin
-	helm upgrade --install jellyfin \
-		./apps/jellyfin \
-		--namespace media \
-		--create-namespace \
-		--wait \
-		--timeout 10m
+	$(ARGOCD) app sync jellyfin
+	$(ARGOCD) app wait jellyfin --sync --health --timeout 600
 
 status-jellyfin:
 	kubectl get deployment,pods,svc,pvc -n media -o wide
@@ -254,11 +250,8 @@ template-samba:
 		--namespace media
 
 deploy-samba: storage-verify lint-samba
-	helm upgrade --install samba \
-		./apps/samba \
-		--namespace media \
-		--wait \
-		--timeout 5m
+	$(ARGOCD) app sync samba
+	$(ARGOCD) app wait samba --sync --health --timeout 300
 
 status-samba:
 	kubectl get deployment,pods,svc -n media -o wide

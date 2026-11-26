@@ -52,3 +52,7 @@ logs-argocd:
 logs-argocd-controller:
 	kubectl logs -n $(ARGOCD_NAMESPACE) \
 		statefulset/argocd-application-controller -f
+
+# Argo CD CLI configuration
+ARGOCD_CONTEXT ?= dinosaur-argocd
+ARGOCD := argocd --core --kube-context $(ARGOCD_CONTEXT)

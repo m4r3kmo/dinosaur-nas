@@ -75,12 +75,26 @@ template-downloader:
 		--set-string image.tag="$(DOWNLOADER_VERSION)"
 
 deploy-downloader: storage-verify lint-downloader check-downloader-image check-downloader-idle
-	helm upgrade --install "$(DOWNLOADER_RELEASE)" \
+	git fetch origin main
+	@set -eu; \
+	revision=$$(git rev-parse FETCH_HEAD); \
+	git diff --quiet "$$revision" -- apps/downloader services/downloader versions.mk || { \
+		echo "ERROR: Downloader configuration or source differs from GitHub main."; \
+		exit 1; \
+	}; \
+	manifest=$$(helm template "$(DOWNLOADER_RELEASE)" \
 		"$(DOWNLOADER_CHART)" \
 		--namespace "$(DOWNLOADER_NAMESPACE)" \
-		--set-string image.tag="$(DOWNLOADER_VERSION)" \
-		--wait \
-		--timeout 5m
+		--show-only templates/deployment.yaml); \
+	image=$$(printf '%s\n' "$$manifest" | kubectl create \
+		--dry-run=client -f - \
+		-o jsonpath='{.spec.template.spec.containers[0].image}'); \
+	test "$$image" = "$(DOWNLOADER_IMAGE)" || { \
+		echo "ERROR: Downloader image version mismatch."; \
+		exit 1; \
+	}; \
+	$(ARGOCD) app sync "$(DOWNLOADER_RELEASE)" --revision "$$revision"
+	$(ARGOCD) app wait "$(DOWNLOADER_RELEASE)" --sync --health --timeout 300
 
 # ---------------------------------------------------------------------------
 # Update protection
