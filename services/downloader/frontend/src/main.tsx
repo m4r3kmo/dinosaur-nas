@@ -1,3 +1,4 @@
+import { useRef as useTransferRef } from "react";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
@@ -43,6 +44,132 @@ type Selection = {
 
 function formatSize(bytes: number) {
   return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
+}
+
+type TransferFilter =
+  "all" | "active" | "queued" | "completed" | "failed";
+
+type TransferSample = {
+  at: number;
+  rate: number | null;
+};
+
+type TransferTelemetry = {
+  rates: Record<string, number>;
+  total: number | null;
+  samples: TransferSample[];
+};
+
+function formatRate(rate: number | undefined | null) {
+  if (rate == null) return "—";
+
+  if (rate < 1024 * 1024) {
+    return `${(rate / 1024).toFixed(1)} KiB/s`;
+  }
+
+  return `${(rate / 1024 ** 2).toFixed(2)} MiB/s`;
+}
+
+function formatETA(remaining: number, rate?: number) {
+  if (!rate || rate <= 0) return "—";
+
+  const seconds = Math.ceil(Math.max(0, remaining) / rate);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const rest = seconds % 60;
+
+  return hours > 0
+    ? `${hours}h ${minutes}m`
+    : `${minutes}m ${String(rest).padStart(2, "0")}s`;
+}
+
+function transferCategory(job: Download): TransferFilter {
+  if (
+    ["failed", "interrupted", "cancelled", "canceled"]
+      .includes(job.status) ||
+    ["failed", "error"].includes(job.import_status)
+  ) {
+    return "failed";
+  }
+
+  if (job.status === "running") return "active";
+  if (job.status === "queued") return "queued";
+  if (job.status === "completed") return "completed";
+
+  return "all";
+}
+
+function ThroughputGraph({
+  samples
+}: {
+  samples: TransferSample[]
+}) {
+  const end = samples.length
+    ? samples[samples.length - 1].at
+    : 0;
+
+  const maximum = Math.max(
+    1024 ** 2,
+    ...samples.map(sample => sample.rate ?? 0)
+  );
+
+  let drawing = false;
+
+  const line = samples.map(sample => {
+    if (sample.rate === null) {
+      drawing = false;
+      return "";
+    }
+
+    const x = 320 - (end - sample.at) / 60000 * 320;
+    const y = 60 - sample.rate / maximum * 54;
+    const command = drawing ? "L" : "M";
+
+    drawing = true;
+
+    return `${command}${x.toFixed(2)} ${y.toFixed(2)}`;
+  }).join(" ");
+
+  return (
+    <div className="throughput-graph">
+      <div className="graph-heading">
+        <small>LIVE THROUGHPUT / 60 SEC</small>
+        <small>MAX {formatRate(maximum)}</small>
+      </div>
+
+      <svg
+        viewBox="0 0 320 64"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label="Transfer speed over the last 60 seconds"
+      >
+        {[6, 24, 42, 60].map(y => (
+          <line
+            key={y}
+            x1="0"
+            x2="320"
+            y1={y}
+            y2={y}
+            stroke="#263326"
+            strokeWidth="0.5"
+          />
+        ))}
+
+        <path
+          d={line}
+          fill="none"
+          stroke="#a3e635"
+          strokeWidth="1.5"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+
+      <div className="graph-heading">
+        <small>-60s</small>
+        <small>NOW</small>
+      </div>
+    </div>
+  );
 }
 
 function fileTitle(filename: string) {
@@ -103,6 +230,22 @@ function App() {
   const [searchedQuery, setSearchedQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [downloads, setDownloads] = useState<Download[]>([]);
+
+  const [transferFilter, setTransferFilter] =
+    useState<TransferFilter>("all");
+
+  const [telemetry, setTelemetry] = useState<TransferTelemetry>({
+    rates: {},
+    total: null,
+    samples: [],
+  });
+
+  const previousTransfer = useTransferRef<{
+    at: number;
+    jobs: Download[];
+  } | null>(null);
+
+  const refreshSequence = useTransferRef(0);
   const [storage, setStorage] = useState<Storage | null>(null);
 
   const [resolution, setResolution] = useState("All");
@@ -126,17 +269,79 @@ function App() {
   const [submitting, setSubmitting] = useState(false);
   const [dialogError, setDialogError] = useState("");
 
+  function updateTelemetry(jobs: Download[]) {
+    const now = performance.now();
+    const previous = previousTransfer.current;
+
+    if (previous && now - previous.at < 1000) return;
+
+    previousTransfer.current = { at: now, jobs };
+
+    const rates: Record<string, number> = {};
+    const active = jobs.filter(job => job.status === "running");
+
+    const elapsed = previous
+      ? (now - previous.at) / 1000
+      : 0;
+
+    if (previous && elapsed > 0 && elapsed <= 15) {
+      for (const job of active) {
+        const old = previous.jobs.find(item => item.id === job.id);
+
+        if (!old) continue;
+
+        const delta = job.downloaded - old.downloaded;
+
+        if (delta < 0) continue;
+
+        rates[job.id] = delta / elapsed;
+      }
+    }
+
+    const total = active.length === 0
+      ? 0
+      : active.every(job => rates[job.id] !== undefined)
+        ? active.reduce((sum, job) => sum + rates[job.id], 0)
+        : null;
+
+    setTelemetry(current => ({
+      rates,
+      total,
+      samples: [
+        ...current.samples.filter(
+          sample => now - sample.at <= 60000
+        ),
+        { at: now, rate: total }
+      ],
+    }));
+  }
+
   async function refresh() {
+    const sequence = ++refreshSequence.current;
+
     try {
       const [jobs, disk] = await Promise.all([
         api<Download[]>("downloads"),
         api<Storage>("storage"),
       ]);
 
+      if (sequence !== refreshSequence.current) return;
+
+      updateTelemetry(jobs);
       setDownloads(jobs);
       setStorage(disk);
       setConnected(true);
     } catch {
+      if (sequence !== refreshSequence.current) return;
+
+      previousTransfer.current = null;
+
+      setTelemetry({
+        rates: {},
+        total: null,
+        samples: [],
+      });
+
       setConnected(false);
     }
   }
@@ -397,6 +602,40 @@ function App() {
     !downloads.some(job => job.source_id === id)
   ).length;
 
+  const transferCounts: Record<TransferFilter, number> = {
+    all: downloads.length,
+    active: downloads.filter(
+      job => transferCategory(job) === "active"
+    ).length,
+    queued: downloads.filter(
+      job => transferCategory(job) === "queued"
+    ).length,
+    completed: downloads.filter(
+      job => transferCategory(job) === "completed"
+    ).length,
+    failed: downloads.filter(
+      job => transferCategory(job) === "failed"
+    ).length,
+  };
+
+  const transferTabs: TransferFilter[] = [
+    "all", "active", "queued", "completed", "failed"
+  ];
+
+  const visibleDownloads = downloads
+    .filter(job =>
+      transferFilter === "all" ||
+      transferCategory(job) === transferFilter
+    )
+    .sort((a, b) => {
+      const order: TransferFilter[] = [
+        "active", "queued", "failed", "completed", "all"
+      ];
+
+      return order.indexOf(transferCategory(a)) -
+        order.indexOf(transferCategory(b));
+    });
+
   return (
     <main>
       <header>
@@ -637,11 +876,42 @@ function App() {
       <section className="panel transfer-monitor">
         <div className="transfer-heading">
           <h2>02 / TRANSFER MONITOR</h2>
-          <span>{downloads.length} FILES</span>
+          <div className="transfer-throughput">
+            {connected && transferCounts.active > 0 && (
+              <div className="transfer-dino-track" aria-hidden="true">
+                <img src={dinosaurLogo} alt="" />
+              </div>
+            )}
+
+            <span>
+              ↓ {formatRate(telemetry.total)}
+            </span>
+          </div>
         </div>
 
-        {downloads.length === 0 && (
-          <p>No downloads yet.</p>
+        <ThroughputGraph samples={telemetry.samples} />
+
+        <div
+          className="transfer-tabs"
+          aria-label="Filter transfers"
+        >
+          {transferTabs.map(tab => (
+            <button
+              key={tab}
+              type="button"
+              className={transferFilter === tab ? "selected" : ""}
+              aria-pressed={transferFilter === tab}
+              onClick={() => setTransferFilter(tab)}
+            >
+              {tab} ({transferCounts[tab]})
+            </button>
+          ))}
+        </div>
+
+        {visibleDownloads.length === 0 && (
+          <p className="transfer-empty">
+            No matching transfers.
+          </p>
         )}
 
         <div
@@ -650,7 +920,7 @@ function App() {
           aria-label="Transfer history"
           tabIndex={0}
         >
-        {downloads.map((job) => (
+        {visibleDownloads.map((job) => (
           <div className="download" key={job.id}>
             <div className="download-header">
               <strong>{job.filename}</strong>
@@ -684,6 +954,20 @@ function App() {
                 </span>
               )}
             </div>
+
+            {job.status === "running" && (
+              <div className="transfer-live">
+                <span>
+                  ↓ {formatRate(telemetry.rates[job.id])}
+                </span>
+                <span>
+                  ETA {formatETA(
+                    job.size - job.downloaded,
+                    telemetry.rates[job.id]
+                  )}
+                </span>
+              </div>
+            )}
 
             {job.status === "completed" &&
               job.import_status === "not_requested" && (
@@ -897,7 +1181,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.4.3
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.0
       </footer>
     </main>
   );

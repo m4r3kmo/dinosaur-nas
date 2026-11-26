@@ -1160,3 +1160,188 @@ button:disabled {
     min-height: 44px;
   }
 }
+
+/* ==================================================
+   LIVE TRANSFER MONITOR - V0.5.0
+   ================================================== */
+
+.transfer-throughput {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #a3e635;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.throughput-graph {
+  background: #080b08;
+  border: 1px solid #303a30;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.throughput-graph svg {
+  display: block;
+  width: 100%;
+  height: 64px;
+  margin: 5px 0;
+  overflow: hidden;
+}
+
+.graph-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.graph-heading small {
+  color: #899389;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+}
+
+.transfer-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.transfer-tabs button {
+  background: #151a15;
+  border: 1px solid #303a30;
+  color: #899389;
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 11px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.transfer-tabs button.selected {
+  background: #a3e635;
+  color: #080a09;
+  border-color: #a3e635;
+}
+
+.transfer-empty {
+  color: #899389;
+  text-align: center;
+  font-size: 12px;
+  padding: 14px 0;
+}
+
+.transfer-live {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #a3e635;
+  font-variant-numeric: tabular-nums;
+}
+
+.transfer-live span:last-child {
+  color: #899389;
+}
+
+.transfer-dino-track {
+  position: relative;
+  width: 48px;
+  height: 32px;
+  overflow: hidden;
+}
+
+.transfer-dino-track img {
+  display: block;
+  width: 26px;
+  height: 26px;
+  image-rendering: pixelated;
+  animation: dino-hop 0.45s steps(2, end) infinite;
+}
+
+.transfer-dino-track::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 1px;
+  width: 100%;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    #46563b 0 7px,
+    transparent 7px 12px
+  );
+  animation: dino-ground 0.4s linear infinite;
+}
+
+@keyframes dino-hop {
+  0%, 100% {
+    transform: translate(2px, 0);
+  }
+
+  50% {
+    transform: translate(4px, -3px);
+  }
+}
+
+@keyframes dino-ground {
+  from {
+    background-position: 0 0;
+  }
+
+  to {
+    background-position: -12px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transfer-dino-track img,
+  .transfer-dino-track::after {
+    animation: none;
+  }
+}
+
+@media (max-width: 650px) {
+  .transfer-throughput {
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .throughput-graph {
+    padding: 8px;
+  }
+
+  .throughput-graph svg {
+    height: 48px;
+  }
+
+  .graph-heading small {
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+
+  .transfer-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .transfer-tabs button {
+    min-height: 44px;
+    padding: 6px 3px;
+    font-size: 10px;
+  }
+
+  .transfer-live {
+    font-size: 11px;
+  }
+
+  .transfer-list {
+    max-height: min(50vh, 340px);
+  }
+}
