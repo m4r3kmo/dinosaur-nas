@@ -781,7 +781,7 @@ function App() {
             </button>
             <span>DINOSAUR DOWNLOADER</span>
           </h1>
-          <p>FILE TRANSFER SYSTEM // NAS-01</p>
+          <p>FILE TRANSFER SYSTEM // Dinosaur - NAS</p>
         </div>
 
         <span
@@ -847,7 +847,7 @@ function App() {
         id="file-search"
         tabIndex={-1}
       >
-        <h2>01 / FILE SEARCH</h2>
+        <h2>NAS / Movie Search</h2>
 
         <form onSubmit={search}>
           <input
@@ -1379,7 +1379,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.2
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.3
       </footer>
     </main>
   );
