@@ -28,3 +28,12 @@ spec:
       kind: IngressRoute
     - group: traefik.io
       kind: Middleware
+
+    - group: batch
+      kind: CronJob
+
+    - group: monitoring.coreos.com
+      kind: ServiceMonitor
+
+    - group: monitoring.coreos.com
+      kind: PrometheusRule
