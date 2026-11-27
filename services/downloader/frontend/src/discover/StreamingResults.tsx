@@ -35,6 +35,7 @@ export default function StreamingResults({
   providers,
   days,
   rating,
+  genreIds,
   sort,
   hideOwned,
   libraryKeys,
@@ -45,6 +46,10 @@ export default function StreamingResults({
   providers: ProviderResponse | null;
   days: number;
   rating: number;
+  genreIds: {
+    movie: number[];
+    tv: number[];
+  } | null;
   sort: string;
   hideOwned: boolean;
   libraryKeys: Set<string> | null;
@@ -146,6 +151,14 @@ export default function StreamingResults({
   }, [mediaType, providerId, days, offset, retry]);
 
   const visibleItems = items.filter(item => {
+
+    if (
+      genreIds &&
+      !genreIds[item.media_type].some(
+        id => item.genre_ids?.includes(id)
+      )
+    ) return false;
+
     if (
       rating > 0 &&
       (item.tmdb_rating == null ||

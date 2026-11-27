@@ -1415,32 +1415,393 @@ button.discover-switch.active {
 
 /* Official TMDB attribution */
 
-.discover-attribution-logos {
+.discover-page .discover-attribution {
+  padding-top: 24px;
+  padding-bottom: 20px;
+  text-align: center;
+}
+
+.discover-page .discover-attribution-logos {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 12px;
+  margin: 0 0 16px;
 }
 
-.discover-tmdb-logo {
+.discover-page .discover-attribution-logos a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.discover-page .discover-tmdb-logo {
   display: block;
   width: 48px;
   max-width: 100%;
   height: auto;
+  margin: 0;
 }
 
-/* Official TMDB attribution */
+.discover-page .discover-attribution p {
+  margin: 8px 0;
+  line-height: 1.6;
+}
 
-.discover-attribution-logos {
+/* Discover v0.6.2 - Compact filters */
+
+.discover-page .discover-filter-heading {
   display: flex;
-  justify-content: center;
   align-items: center;
-  margin-bottom: 12px;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 10px;
 }
 
-.discover-tmdb-logo {
+.discover-page .discover-filter-heading .discover-section-label {
+  margin: 0;
+}
+
+.discover-page button.discover-reset-link {
+  width: auto;
+  min-height: 32px;
+  margin: 0;
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--discover-green);
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 12px;
+}
+
+.discover-page button.discover-reset-link:hover {
+  border-color: var(--discover-border);
+  background: var(--discover-panel);
+}
+
+.discover-page .discover-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.discover-page .discover-filter-grid > label,
+.discover-page .discover-genre-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.discover-page .discover-field-label {
+  color: var(--discover-muted);
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.discover-page .discover-filter-grid select,
+.discover-page button.discover-genre-trigger {
+  box-sizing: border-box;
+  width: 100%;
+  height: 42px;
+  min-height: 42px;
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--discover-panel);
+  color: var(--discover-green);
+  border: 1px solid var(--discover-border);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.discover-page .discover-genre-filter {
+  position: relative;
+}
+
+.discover-page button.discover-genre-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.discover-page button.discover-genre-trigger span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discover-page button.discover-genre-trigger[aria-expanded="true"] {
+  border-color: var(--discover-green);
+}
+
+.discover-page .discover-genre-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 12px;
+  background: #141a12;
+  border: 1px solid var(--discover-border);
+  border-radius: 4px;
+  box-shadow: 0 12px 30px #0009;
+}
+
+.discover-page .discover-genre-menu input[type="search"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  background: #090c09;
+  border: 1px solid var(--discover-border);
+  border-radius: 3px;
+  color: var(--discover-green);
+  font: inherit;
+  font-size: 13px;
+}
+
+.discover-page .discover-genre-options {
+  max-height: 250px;
+  overflow-y: auto;
+  margin: 10px 0;
+  scrollbar-color: #526345 #131910;
+}
+
+.discover-page .discover-genre-options label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 5px;
+  margin: 0;
+  cursor: pointer;
+  color: var(--discover-muted);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.discover-page .discover-genre-options label:hover {
+  background: #24351a;
+  color: var(--discover-green);
+}
+
+.discover-page .discover-genre-options input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--discover-green);
+}
+
+.discover-page .discover-genre-menu-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--discover-border);
+  padding-top: 10px;
+}
+
+.discover-page .discover-genre-menu-actions button {
+  width: auto;
+  min-height: 34px;
+  margin: 0;
+  padding: 6px 12px;
+  color: var(--discover-muted);
+  background: transparent;
+  border: 1px solid var(--discover-border);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.discover-page button.discover-genre-apply {
+  color: #090c09;
+  background: var(--discover-green);
+  border-color: var(--discover-green);
+}
+
+.discover-page .discover-genre-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.discover-page .discover-genre-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  min-height: 28px;
+  margin: 0;
+  padding: 4px 9px;
+  background: #223417;
+  color: var(--discover-green);
+  border: 1px solid #526b25;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.discover-page .discover-loaded-filter-note {
   display: block;
-  width: 48px;
-  max-width: 100%;
-  height: auto;
+  color: var(--discover-muted);
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+/* Rating filter */
+
+.discover-page .discover-rating-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  margin: 10px 0;
+  padding: 12px;
+}
+
+.discover-page .discover-rating-filter label {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: center;
+}
+
+.discover-page .discover-rating-filter strong {
+  grid-column: 2;
+  grid-row: 1;
+  font-size: 21px;
+}
+
+.discover-page .discover-rating-filter input {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  accent-color: var(--discover-green);
+}
+
+.discover-page .discover-range-labels {
+  display: flex;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  justify-content: space-between;
+  color: var(--discover-muted);
+  font-size: 11px;
+}
+
+/* Compact library controls */
+
+.discover-page .discover-filter-actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.discover-page .discover-filter-actions .discover-owned-filter {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: auto;
+  min-height: 0;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+}
+
+.discover-page .discover-library-sync {
+  text-align: right;
+  margin-top: 4px;
+}
+
+.discover-page .discover-genre-filter button:focus-visible,
+.discover-page .discover-reset-link:focus-visible,
+.discover-page .discover-genre-chips button:focus-visible {
+  outline: 2px solid var(--discover-green);
+  outline-offset: 3px;
+}
+
+/* Responsive filters */
+
+@media (max-width: 760px) {
+  .discover-page .discover-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .discover-page .discover-genre-filter {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 420px) {
+  .discover-page .discover-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .discover-page .discover-genre-filter {
+    grid-row: auto;
+  }
+
+  .discover-page .discover-genre-options {
+    max-height: 210px;
+  }
+}
+
+/* Genre dropdown alignment fix */
+
+.discover-page .discover-genre-options label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  justify-content: start;
+  justify-items: start;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 8px;
+  margin: 0;
+  text-align: left;
+}
+
+.discover-page .discover-genre-options label input[type="checkbox"] {
+  display: block;
+  grid-column: 1;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  max-width: 18px;
+  padding: 0;
+  margin: 0;
+  justify-self: start;
+  accent-color: var(--discover-green);
+}
+
+.discover-page .discover-genre-options label > span {
+  grid-column: 2;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  justify-self: start;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.discover-page .discover-genre-options {
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.discover-page .discover-genre-menu {
+  padding: 12px;
+}
+
+.discover-page .discover-genre-menu input[type="search"]:focus {
+  outline: 1px solid var(--discover-green);
+  outline-offset: 1px;
 }

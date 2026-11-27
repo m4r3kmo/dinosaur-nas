@@ -123,6 +123,7 @@ class DiscoverCatalog:
                 item.get("backdrop_path"),
                 "w780",
             ),
+            "genre_ids": item.get("genre_ids", []),
             "tmdb_rating": rating,
             "tmdb_votes": votes,
             "csfd_rating": None,
@@ -139,6 +140,7 @@ class DiscoverCatalog:
         min_votes,
         sort,
         page_limit=DEFAULT_PAGES,
+        genre_ids=(),
     ):
 
         today = datetime.now(
@@ -171,6 +173,11 @@ class DiscoverCatalog:
             "vote_count.gte": min_votes,
             "sort_by": sorts[sort],
         }
+
+        if genre_ids:
+            params["with_genres"] = "|".join(
+                map(str, genre_ids)
+            )
 
         results = []
         total_pages = 1
@@ -267,12 +274,14 @@ class DiscoverCatalog:
         self,
         media_type="all",
         provider_id=0,
-        days=30,
-        min_rating=70,
+        days=90,
+        min_rating=50,
         min_votes=5,
         sort="newest",
         page_limit=DEFAULT_PAGES,
+        genres=(),
     ):
+        from .genres import genre_ids_for
 
         if not DEFAULT_PAGES <= page_limit <= MAX_PAGES:
             raise ValueError("Invalid page limit")
@@ -297,6 +306,9 @@ class DiscoverCatalog:
         jobs = []
 
         for kind in media_types:
+
+            if genres and not genre_ids_for(kind, genres):
+                continue
 
             for provider in self.providers(kind):
 
@@ -325,6 +337,7 @@ class DiscoverCatalog:
                         min_votes,
                         sort,
                         page_limit,
+                        genre_ids_for(kind, genres),
                     ),
                 )
                 for kind, provider in jobs
@@ -497,6 +510,10 @@ class DiscoverCatalog:
                 "backdrop": self.client.poster_url(
                     data.get("backdrop_path"), "w780"
                 ),
+                "genre_ids": [
+                    genre["id"]
+                    for genre in data.get("genres", [])
+                ],
                 "tmdb_votes": data.get("vote_count", 0),
                 "popularity": data.get("popularity", 0),
                 "title": data.get("title") or data.get("name"),
@@ -539,6 +556,6 @@ class DiscoverCatalog:
             }
 
         return self.cached(
-            f"detail-v2:{REGION}:{media_type}:{tmdb_id}",
+            f"detail-v3:{REGION}:{media_type}:{tmdb_id}",
             load,
         )

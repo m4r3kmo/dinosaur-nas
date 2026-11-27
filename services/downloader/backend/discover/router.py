@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from .catalog import DiscoverCatalog, PLATFORMS, DEFAULT_PAGES, MAX_PAGES
 from .tmdb import TMDBError
+from .genres import GENRES, genre_options
 
 
 router = APIRouter(
@@ -31,12 +32,18 @@ def get_providers():
         ) from None
 
 
+@router.get("/genres")
+def get_genres():
+    return {"genres": genre_options()}
+
+
 @router.get("/releases")
 def get_releases(
     media_type: Literal["all", "movie", "tv"] = "all",
     provider_id: int = Query(default=0, ge=0),
-    days: int = Query(default=30, ge=7, le=90),
-    min_rating: int = Query(default=70, ge=0, le=100),
+    days: int = Query(default=90, ge=7, le=90),
+    min_rating: int = Query(default=50, ge=0, le=100),
+    genres: str = Query(default="", max_length=300),
     min_votes: int = Query(default=5, ge=0, le=1000),
     sort: Literal["newest", "rating", "popular"] = "newest",
     page_limit: int = Query(
@@ -45,6 +52,18 @@ def get_releases(
         le=MAX_PAGES,
     ),
 ):
+
+    selected_genres = tuple(dict.fromkeys(
+        key.strip()
+        for key in genres.split(",")
+        if key.strip()
+    ))
+
+    if any(key not in GENRES for key in selected_genres):
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported genre",
+        )
 
     if days not in (7, 14, 30, 90):
         raise HTTPException(
@@ -68,6 +87,7 @@ def get_releases(
             min_votes=min_votes,
             sort=sort,
             page_limit=page_limit,
+            genres=selected_genres,
         )
 
     except TMDBError as exc:
