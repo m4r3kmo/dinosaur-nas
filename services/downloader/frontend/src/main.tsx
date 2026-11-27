@@ -2,6 +2,7 @@ import { useRef as useTransferRef } from "react";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
+import SystemTelemetry from "./SystemTelemetry";
 import dinosaurLogo from "./dinosaur.svg";
 
 type Library = "movies" | "series" | "downloads";
@@ -882,8 +883,8 @@ function App() {
 
   return (
     <main>
-      <header>
-        <div>
+      <header className="dinosaur-header">
+        <div className="dino-brand">
           <h1 className="brand">
             <button
               type="button"
@@ -900,16 +901,10 @@ function App() {
             </button>
             <span>DINOSAUR DOWNLOADER</span>
           </h1>
-          <p>FILE TRANSFER SYSTEM // Dinosaur - NAS</p>
+          <p className="brand-subtitle">FILE TRANSFER SYSTEM // DINOSAUR-NAS</p>
         </div>
 
-        <span
-          className={connected ? "online" : "offline"}
-        >
-          {connected
-            ? "● SYSTEM ONLINE"
-            : "● SYSTEM OFFLINE"}
-        </span>
+        <SystemTelemetry connected={connected} />
       </header>
 
       <div className="stats">
@@ -1533,7 +1528,7 @@ function App() {
       )}
 
       <footer>
-        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.5
+        DINOSAUR NAS // TRANSFER SYSTEM // V0.5.6
       </footer>
     </main>
   );

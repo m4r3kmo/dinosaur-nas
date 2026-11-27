@@ -68,6 +68,9 @@ spec:
             - name: TZ
               value: Europe/Bratislava
 
+            - name: PROMETHEUS_URL
+              value: {{ .Values.prometheus.url | quote }}
+
             - name: JELLYFIN_URL
               value: {{ .Values.jellyfin.url | quote }}
 

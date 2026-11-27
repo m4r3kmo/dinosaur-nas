@@ -4,7 +4,7 @@ downloadWorkers: 3
 
 image:
   repository: localhost/dinosaur-downloader
-  tag: "0.5.5"
+  tag: "0.5.6"
   pullPolicy: Never
 
 credentials:
@@ -13,6 +13,9 @@ credentials:
 service:
   type: ClusterIP
   port: 8085
+
+prometheus:
+  url: http://dinosaur-monitoring-prometheus.monitoring.svc.cluster.local:9090
 
 jellyfin:
   url: http://jellyfin.media.svc.cluster.local:8096

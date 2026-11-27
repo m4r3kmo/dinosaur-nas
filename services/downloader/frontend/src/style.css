@@ -1551,3 +1551,204 @@ button.dino-home:focus-visible {
     transition: none;
   }
 }
+
+/* ==================================================
+   DINOSAUR SYSTEM TELEMETRY - V0.5.6
+   ================================================== */
+
+header.dinosaur-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  align-items: center;
+  gap: 24px;
+}
+
+.dino-brand {
+  min-width: 0;
+}
+
+.dino-brand .brand {
+  font-size: clamp(18px, 2.4vw, 28px);
+  letter-spacing: 1px;
+}
+
+.dino-brand .brand-subtitle {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.5px;
+  color: #929b92;
+}
+
+.dino-system {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-family: "Share Tech Mono", Consolas, monospace;
+}
+
+.dino-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.dino-status,
+.dino-clock-time {
+  font-size: 23px;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.dino-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.dino-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.dino-status.online .dino-status-dot {
+  box-shadow: 0 0 8px #a3e635;
+  animation: dino-status-pulse 2s ease-in-out infinite;
+}
+
+.dino-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 4px;
+}
+
+.dino-clock-time {
+  color: var(--retro-green);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
+.dino-clock-date {
+  color: #a6b09e;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.hardware-telemetry {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: #151b13;
+  padding: 8px 0;
+  border-radius: 3px;
+}
+
+.hardware-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.hardware-metric + .hardware-metric {
+  border-left: 1px solid #354033;
+}
+
+.hardware-label {
+  color: #929b92;
+  font-size: 11px;
+  letter-spacing: 0.7px;
+  white-space: nowrap;
+}
+
+.hardware-value {
+  font-size: 23px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hardware-value.normal {
+  color: var(--retro-green);
+}
+
+.hardware-value.warning {
+  color: #fbbf24;
+}
+
+.hardware-value.critical {
+  color: #ff6363;
+}
+
+.hardware-value.unavailable {
+  color: var(--retro-muted);
+}
+
+@keyframes dino-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (max-width: 850px) {
+  header.dinosaur-header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .dino-system {
+    border-top: 1px solid #303a30;
+    padding-top: 12px;
+  }
+
+  .dino-status,
+  .dino-clock-time {
+    font-size: clamp(16px, 5vw, 23px);
+  }
+}
+
+@media (max-width: 650px) {
+  .dino-brand .brand {
+    font-size: clamp(15px, 4.5vw, 19px);
+    letter-spacing: 0;
+    gap: 10px;
+  }
+
+  .dino-brand .brand-subtitle {
+    font-size: clamp(10px, 2.9vw, 12px);
+    letter-spacing: 0;
+  }
+
+  .dino-clock-date {
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+
+  .hardware-label {
+    font-size: 10px;
+  }
+
+  .hardware-value {
+    font-size: 21px;
+  }
+
+  .hardware-telemetry {
+    padding: 7px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dino-status.online .dino-status-dot {
+    animation: none;
+  }
+}

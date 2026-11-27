@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from system_metrics import get_system_metrics
 from fastshare import FastShareClient
 from media_import import build_destination
 from storage_config import storage_mounted
@@ -27,7 +28,7 @@ from download_queue import (
 )
 
 
-APP_VERSION = "0.5.5"
+APP_VERSION = "0.5.6"
 
 
 # ==========================================
@@ -141,6 +142,11 @@ class DownloadRequest(ImportRequest):
 # ==========================================
 # Health check
 # ==========================================
+
+@app.get("/api/system/metrics")
+def system_metrics():
+    return get_system_metrics()
+
 
 @app.get("/api/health")
 def health():
