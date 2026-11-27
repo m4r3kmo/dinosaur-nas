@@ -32,3 +32,6 @@ configMapGenerator:
   - name: dinosaur-main-overview-dashboard
     files:
       - main-overview.json
+  - name: dinosaur-streaming-catalogs-dashboard
+    files:
+      - streaming-catalogs.json

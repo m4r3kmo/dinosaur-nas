@@ -2,6 +2,9 @@ import { useRef as useTransferRef } from "react";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./style.css";
+import DiscoverPage from "./discover/DiscoverPage";
+import SeriesLibraryStatus from "./discover/SeriesLibraryStatus";
+import type { MediaItem } from "./discover/types";
 import SystemTelemetry from "./SystemTelemetry";
 import dinosaurLogo from "./dinosaur.svg";
 
@@ -242,6 +245,40 @@ function publicError(message: string) {
 }
 
 function App() {
+  const [discoverOpen, setDiscoverOpen] = useState(
+    window.location.hash === "#/discover"
+  );
+
+  useEffect(() => {
+    function syncPage() {
+      setDiscoverOpen(
+        window.location.hash === "#/discover"
+      );
+    }
+
+    window.addEventListener("hashchange", syncPage);
+
+    return () => window.removeEventListener(
+      "hashchange", syncPage
+    );
+  }, []);
+
+  function openDiscover() {
+    setDiscoverSeries(null);
+    window.location.hash = "/discover";
+    setDiscoverOpen(true);
+    window.scrollTo(0, 0);
+  }
+
+  function closeDiscover() {
+    window.location.hash = "";
+    setDiscoverOpen(false);
+    window.scrollTo(0, 0);
+  }
+
+  const [discoverSeries, setDiscoverSeries] =
+    useState<MediaItem | null>(null);
+
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [batchBusy, setBatchBusy] = useState(false);
@@ -394,8 +431,12 @@ function App() {
 
   async function search(event: React.FormEvent) {
     event.preventDefault();
+    setDiscoverSeries(null);
+    await runSearch(query);
+  }
 
-    const term = query.trim();
+  async function runSearch(value: string) {
+    const term = value.trim();
 
     if (term.length < 2 || batchBusy || loading) return;
 
@@ -881,6 +922,41 @@ function App() {
     scrollToSection("transfer-monitor");
   }
 
+  function searchFromDiscover(
+    item: MediaItem,
+    episodeQuery?: string
+  ) {
+    if (loading || batchBusy) return;
+
+    setDiscoverSeries(
+      item.media_type === "tv" ? item : null
+    );
+
+    const term = (episodeQuery ?? item.title).trim();
+
+    setQuery(term);
+    setResolution("All");
+    setResults([]);
+    setSelectedIds([]);
+    setSearchedQuery("");
+    setBatchMessage("");
+    setError("");
+
+    closeDiscover();
+    void runSearch(term);
+  }
+
+  if (discoverOpen) {
+    return (
+      <main>
+        <DiscoverPage
+          onBack={closeDiscover}
+          onSearch={searchFromDiscover}
+        />
+      </main>
+    );
+  }
+
   return (
     <main>
       <header className="dinosaur-header">
@@ -906,6 +982,47 @@ function App() {
 
         <SystemTelemetry connected={connected} />
       </header>
+
+      <nav
+        className="discover-navigation"
+        aria-label="Main navigation"
+      >
+        <button
+          type="button"
+          className="active"
+          aria-current="page"
+        >
+          DOWNLOADER
+        </button>
+
+        <button
+          type="button"
+          className="discover-link"
+          onClick={openDiscover}
+          disabled={loading || batchBusy}
+        >
+          NEW RELEASES
+        </button>
+      </nav>
+
+      {discoverSeries && (
+        <SeriesLibraryStatus
+          key={discoverSeries.id}
+          tmdbId={discoverSeries.id}
+          title={discoverSeries.title}
+          searchDisabled={loading || batchBusy}
+          onEpisodeSearch={(season, episode) => {
+            const code =
+              `S${String(season).padStart(2, "0")}` +
+              `E${String(episode).padStart(2, "0")}`;
+
+            searchFromDiscover(
+              discoverSeries,
+              `${discoverSeries.title} ${code}`
+            );
+          }}
+        />
+      )}
 
       <div className="stats">
         <section className="quick-nav-card">

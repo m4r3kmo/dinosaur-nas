@@ -1,0 +1,26 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dinosaur-downloader
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dinosaur-downloader
+    release: {{ .Values.monitoring.release | quote }}
+
+spec:
+  selector:
+    matchLabels:
+      app: dinosaur-downloader
+
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+
+  endpoints:
+    - port: http
+      path: /api/discover/streaming/metrics
+      interval: {{ .Values.monitoring.interval }}
+      scrapeTimeout: {{ .Values.monitoring.scrapeTimeout }}
+      scheme: http
+{{- end }}

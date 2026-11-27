@@ -1,0 +1,96 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: dinosaur-streaming-catalogs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dinosaur-downloader
+    release: {{ .Values.monitoring.release | quote }}
+
+spec:
+  groups:
+    - name: dinosaur.streaming.catalogs
+      rules:
+
+        - alert: DinosaurStreamingMetricsUnavailable
+          expr: |
+            absent(
+              dinosaur_streaming_catalog_database_present{
+                namespace="media",
+                service="dinosaur-downloader"
+              }
+            )
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dinosaur streaming metrics unavailable"
+            description: "Streaming metrics have been unavailable for 10 minutes."
+
+{{- if and .Values.availabilityScanner.enabled (not .Values.availabilityScanner.suspend) }}
+
+        - alert: DinosaurStreamingDatabaseMissing
+          expr: |
+            dinosaur_streaming_catalog_database_present == 0
+          for: 24h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Streaming catalog database missing"
+            description: "The streaming catalog database has not been created."
+
+        - alert: DinosaurStreamingCatalogNotInitialized
+          expr: |
+            dinosaur_streaming_catalog_initialized == 0
+          for: 24h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Streaming catalog not initialized"
+            description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has no baseline.'
+
+        - alert: DinosaurStreamingCatalogStale
+          expr: |
+            (
+              time() -
+              dinosaur_streaming_catalog_last_success_timestamp_seconds
+              > 50400
+            )
+            and
+            (
+              time() -
+              dinosaur_streaming_catalog_last_success_timestamp_seconds
+              <= 86400
+            )
+            and
+            (
+              dinosaur_streaming_catalog_initialized == 1
+            )
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Streaming catalog scan overdue"
+            description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has not been scanned for more than 14 hours.'
+
+        - alert: DinosaurStreamingCatalogCritical
+          expr: |
+            (
+              time() -
+              dinosaur_streaming_catalog_last_success_timestamp_seconds
+              > 86400
+            )
+            and
+            (
+              dinosaur_streaming_catalog_initialized == 1
+            )
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Streaming catalog scan critically overdue"
+            description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has not been scanned for more than 24 hours.'
+
+{{- end }}
+{{- end }}

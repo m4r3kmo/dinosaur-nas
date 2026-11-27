@@ -1,0 +1,98 @@
+{{- if .Values.availabilityScanner.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dinosaur-availability-scanner
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: dinosaur-availability-scanner
+    app.kubernetes.io/component: availability-scanner
+    app.kubernetes.io/managed-by: Helm
+
+spec:
+  schedule: {{ .Values.availabilityScanner.schedule | quote }}
+  timeZone: {{ .Values.availabilityScanner.timeZone | quote }}
+  suspend: {{ .Values.availabilityScanner.suspend }}
+
+  concurrencyPolicy: {{ .Values.availabilityScanner.concurrencyPolicy }}
+  startingDeadlineSeconds: {{ .Values.availabilityScanner.startingDeadlineSeconds }}
+
+  successfulJobsHistoryLimit: {{ .Values.availabilityScanner.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.availabilityScanner.failedJobsHistoryLimit }}
+
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.availabilityScanner.backoffLimit }}
+      activeDeadlineSeconds: {{ .Values.availabilityScanner.activeDeadlineSeconds }}
+
+      template:
+        metadata:
+          labels:
+            app: dinosaur-availability-scanner
+
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          terminationGracePeriodSeconds: 30
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+
+            seccompProfile:
+              type: RuntimeDefault
+
+          nodeSelector:
+            {{- toYaml .Values.nodeSelector | nindent 12 }}
+
+          containers:
+            - name: availability-scanner
+
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+              workingDir: /app/backend
+
+              command:
+                - python
+                - -m
+                - discover.scan_catalogs
+
+              securityContext:
+                allowPrivilegeEscalation: false
+
+                capabilities:
+                  drop:
+                    - ALL
+
+              env:
+                - name: TMDB_ACCESS_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.availabilityScanner.credentials.existingSecret }}
+                      key: TMDB_ACCESS_TOKEN
+
+                - name: DOWNLOADER_STATE_DIR
+                  value: /state
+
+                - name: TZ
+                  value: {{ .Values.availabilityScanner.timeZone | quote }}
+
+                - name: PYTHONUNBUFFERED
+                  value: "1"
+
+              resources:
+                {{- toYaml .Values.availabilityScanner.resources | nindent 16 }}
+
+              volumeMounts:
+                - name: state
+                  mountPath: /state
+
+          volumes:
+            - name: state
+              persistentVolumeClaim:
+                claimName: dinosaur-downloader-state
+{{- end }}

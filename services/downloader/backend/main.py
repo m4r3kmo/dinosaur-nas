@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from system_metrics import get_system_metrics
+from discover.router import router as discover_router
 from fastshare import FastShareClient
 from media_import import build_destination
 from storage_config import storage_mounted
@@ -146,6 +147,9 @@ class DownloadRequest(ImportRequest):
 @app.get("/api/system/metrics")
 def system_metrics():
     return get_system_metrics()
+
+
+app.include_router(discover_router)
 
 
 @app.get("/api/health")

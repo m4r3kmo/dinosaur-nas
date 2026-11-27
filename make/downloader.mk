@@ -43,6 +43,7 @@ help-downloader:
 build-downloader:
 	podman build \
 		--tag "$(DOWNLOADER_IMAGE)" \
+		--build-arg DOWNLOADER_VERSION="$(DOWNLOADER_VERSION)" \
 		--file "$(DOWNLOADER_CONTEXT)/Dockerfile" \
 		"$(DOWNLOADER_CONTEXT)"
 

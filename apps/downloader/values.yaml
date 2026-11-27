@@ -4,7 +4,7 @@ downloadWorkers: 3
 
 image:
   repository: localhost/dinosaur-downloader
-  tag: "0.5.6"
+  tag: "0.6.0"
   pullPolicy: Never
 
 credentials:
@@ -52,3 +52,34 @@ ingress:
   auth:
     existingSecret: downloader-web-auth
     realm: Dinosaur NAS
+availabilityScanner:
+  enabled: true
+  suspend: true
+
+  schedule: "0 6,18 * * *"
+  timeZone: Europe/Bratislava
+
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 1800
+  activeDeadlineSeconds: 1800
+
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  backoffLimit: 0
+
+  credentials:
+    existingSecret: dinosaur-discover-credentials
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+monitoring:
+  enabled: true
+  release: monitoring
+  interval: 60s
+  scrapeTimeout: 10s
