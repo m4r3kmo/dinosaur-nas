@@ -50,18 +50,48 @@ spec:
             summary: "Streaming catalog not initialized"
             description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has no baseline.'
 
+        - alert: DinosaurStreamingScannerJobFailed
+          expr: |
+            (
+              kube_job_failed{
+                namespace="media",
+                condition="true"
+              } == 1
+            )
+            and on (namespace, job_name)
+            topk(
+              1,
+              max by (namespace, job_name) (
+                kube_job_created{namespace="media"}
+              )
+              and on (namespace, job_name)
+              (
+                kube_job_owner{
+                  namespace="media",
+                  owner_kind="CronJob",
+                  owner_name="dinosaur-availability-scanner"
+                } == 1
+              )
+            )
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dinosaur streaming scanner failed"
+            description: 'Scanner job {{ "{{" }} $labels.job_name {{ "}}" }} has failed.'
+
         - alert: DinosaurStreamingCatalogStale
           expr: |
             (
               time() -
               dinosaur_streaming_catalog_last_success_timestamp_seconds
-              > 50400
+              > 93600
             )
             and
             (
               time() -
               dinosaur_streaming_catalog_last_success_timestamp_seconds
-              <= 86400
+              <= 172800
             )
             and
             (
@@ -72,14 +102,14 @@ spec:
             severity: warning
           annotations:
             summary: "Streaming catalog scan overdue"
-            description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has not been scanned for more than 14 hours.'
+            description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has not been scanned for more than 26 hours.'
 
         - alert: DinosaurStreamingCatalogCritical
           expr: |
             (
               time() -
               dinosaur_streaming_catalog_last_success_timestamp_seconds
-              > 86400
+              > 172800
             )
             and
             (
@@ -90,7 +120,7 @@ spec:
             severity: critical
           annotations:
             summary: "Streaming catalog scan critically overdue"
-            description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has not been scanned for more than 24 hours.'
+            description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has not been scanned for more than 48 hours.'
 
 {{- end }}
 {{- end }}

@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import sleep
 
+from .cache import DiscoverCache
 from .catalog import PLATFORMS
 from .tmdb import TMDBClient
 
@@ -16,6 +17,18 @@ REGION = "SK"
 MAX_PAGES = 500
 REQUEST_DELAY = 0.25
 RETENTION_DAYS = 90
+RETRY_DELAY = 15
+
+CATALOG_SORTS = {
+    "movie": (
+        "original_title.asc",
+        "primary_release_date.asc",
+    ),
+    "tv": (
+        "original_name.asc",
+        "first_air_date.asc",
+    ),
+}
 
 
 class IncompleteCatalog(RuntimeError):
@@ -68,6 +81,27 @@ class CatalogStore:
         db.row_factory = sqlite3.Row
 
         return db
+
+    def cleanup(self):
+
+        cutoff = (
+            datetime.now(timezone.utc)
+            - timedelta(days=RETENTION_DAYS)
+        ).isoformat()
+
+        with closing(self.connect()) as db, db:
+
+            db.execute("BEGIN IMMEDIATE")
+
+            db.execute(
+                "DELETE FROM catalog_events WHERE detected_at < ?",
+                (cutoff,),
+            )
+
+            db.execute(
+                "DELETE FROM catalogs WHERE scanned_at < ?",
+                (cutoff,),
+            )
 
     def observe(self, provider_id, media_type, ids):
 
@@ -178,9 +212,15 @@ class CatalogStore:
         }
 
 
-def fetch_catalog(client, provider_id, media_type):
+def fetch_catalog(
+    client, provider_id, media_type, sort_by=None
+):
+
+    if sort_by is None:
+        sort_by = CATALOG_SORTS[media_type][0]
 
     ids = set()
+    seen_pages = {}
     page = 1
     expected_pages = None
     expected_total = None
@@ -196,7 +236,7 @@ def fetch_catalog(client, provider_id, media_type):
             with_watch_providers=str(provider_id),
             with_watch_monetization_types="flatrate",
             include_adult="false",
-            sort_by="popularity.desc",
+            sort_by=sort_by,
         )
 
         if expected_pages is None:
@@ -225,14 +265,23 @@ def fetch_catalog(client, provider_id, media_type):
 
         for item in data["results"]:
 
-            tmdb_id = int(item["id"])
+            tmdb_id = item.get("id")
 
-            if tmdb_id < 1 or tmdb_id in ids:
+            if type(tmdb_id) is not int or tmdb_id < 1:
                 raise IncompleteCatalog(
-                    "Invalid or duplicate TMDB ID"
+                    f"Invalid TMDB ID {tmdb_id!r} "
+                    f"on page {page}"
+                )
+
+            if tmdb_id in ids:
+                raise IncompleteCatalog(
+                    f"Duplicate TMDB ID {tmdb_id} "
+                    f"on page {page}; "
+                    f"first seen on page {seen_pages[tmdb_id]}"
                 )
 
             ids.add(tmdb_id)
+            seen_pages[tmdb_id] = page
 
         if page == expected_pages:
             break
@@ -254,6 +303,45 @@ def fetch_catalog(client, provider_id, media_type):
     return ids
 
 
+def fetch_catalog_with_retry(client, provider_id, media_type):
+
+    sorts = CATALOG_SORTS[media_type]
+
+    for attempt, sort_by in enumerate(sorts, start=1):
+
+        print(json.dumps({
+            "provider": PLATFORMS[provider_id],
+            "media_type": media_type,
+            "attempt": attempt,
+            "sort_by": sort_by,
+            "status": "scanning",
+        }), flush=True)
+
+        try:
+            return fetch_catalog(
+                client,
+                provider_id,
+                media_type,
+                sort_by=sort_by,
+            )
+
+        except IncompleteCatalog as exc:
+
+            print(json.dumps({
+                "provider": PLATFORMS[provider_id],
+                "media_type": media_type,
+                "attempt": attempt,
+                "sort_by": sort_by,
+                "status": "incomplete",
+                "reason": str(exc),
+            }), flush=True)
+
+            if attempt == len(sorts):
+                raise
+
+            sleep(RETRY_DELAY)
+
+
 def main():
 
     parser = argparse.ArgumentParser()
@@ -271,8 +359,14 @@ def main():
 
     args = parser.parse_args()
 
-    client = TMDBClient()
+    DiscoverCache().cleanup()
+    print("METADATA CACHE CLEANUP: OK", flush=True)
+
     store = CatalogStore()
+    store.cleanup()
+    print("CATALOG RETENTION CLEANUP: OK", flush=True)
+
+    client = TMDBClient()
 
     providers = (
         [args.provider]
@@ -294,7 +388,7 @@ def main():
 
             try:
 
-                ids = fetch_catalog(
+                ids = fetch_catalog_with_retry(
                     client,
                     provider_id,
                     media_type,
