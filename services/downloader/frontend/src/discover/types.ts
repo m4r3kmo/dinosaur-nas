@@ -23,6 +23,7 @@ export type MediaItem = {
   poster: string | null;
   backdrop: string | null;
   tmdb_rating: number | null;
+  genre_ids?: number[];
   tmdb_votes: number;
   csfd_rating: number | null;
   popularity: number;
@@ -90,4 +91,16 @@ export type StreamingResponse = {
     tmdb_id: number;
     error: string;
   }[];
+};
+
+
+export type GenreOption = {
+  id: string;
+  label: string;
+  movie: number[];
+  tv: number[];
+};
+
+export type GenreResponse = {
+  genres: GenreOption[];
 };

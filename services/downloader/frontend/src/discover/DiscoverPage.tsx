@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import GenreFilter from "./GenreFilter";
 import MediaCard from "./MediaCard";
 import StreamingResults from "./StreamingResults";
 import dinosaurLogo from "../dinosaur.svg";
@@ -10,6 +11,8 @@ import type {
   Platform,
   CatalogResponse,
   ProviderResponse,
+  GenreOption,
+  GenreResponse,
 } from "./types";
 
 import "./discover.css";
@@ -23,6 +26,9 @@ const CONTENT_TYPES: {
   { value: "movie", label: "MOVIES", icon: "▤" },
   { value: "tv", label: "TV SERIES", icon: "▣" },
 ];
+
+const DEFAULT_DAYS = 90;
+const DEFAULT_RATING = 50;
 
 const PROVIDER_ORDER = [
   8, 119, 337, 350, 1899, 1773
@@ -65,13 +71,45 @@ export default function DiscoverPage({
     useState<"releases" | "streaming">("releases");
 
   const [providerId, setProviderId] = useState(0);
-  const [days, setDays] = useState(30);
-  const [rating, setRating] = useState(70);
+  const [days, setDays] = useState(DEFAULT_DAYS);
+  const [rating, setRating] = useState(DEFAULT_RATING);
   const [sort, setSort] = useState("newest");
   const [pageLimit, setPageLimit] = useState(2);
 
+  const [genreOptions, setGenreOptions] =
+    useState<GenreOption[]>([]);
+
+  const [selectedGenres, setSelectedGenres] =
+    useState<string[]>([]);
+
+  const [genreError, setGenreError] = useState("");
+
+  const availableGenres = useMemo(
+    () => genreOptions.filter(genre =>
+      mediaType === "all" || genre[mediaType].length > 0
+    ),
+    [genreOptions, mediaType],
+  );
+
+  const streamingGenreIds = selectedGenres.length
+    ? {
+        movie: genreOptions
+          .filter(g => selectedGenres.includes(g.id))
+          .flatMap(g => g.movie),
+        tv: genreOptions
+          .filter(g => selectedGenres.includes(g.id))
+          .flatMap(g => g.tv),
+      }
+    : null;
+
+  function changeGenres(ids: string[]) {
+    setPageLimit(2);
+    setSelectedGenres([...ids].sort());
+  }
+
   const filterKey = JSON.stringify([
     mediaType, providerId, days, rating, sort,
+    selectedGenres,
   ]);
 
   const [providers, setProviders] =
@@ -144,6 +182,26 @@ export default function DiscoverPage({
   }, [refresh]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
+    setGenreError("");
+
+    request<GenreResponse>("genres", controller.signal)
+      .then(data => {
+        if (!controller.signal.aborted) {
+          setGenreOptions(data.genres);
+        }
+      })
+      .catch(err => {
+        if (!controller.signal.aborted) {
+          setGenreError(err.message);
+        }
+      });
+
+    return () => controller.abort();
+  }, [refresh]);
+
+  useEffect(() => {
     if (mode !== "releases") return;
 
     const controller = new AbortController();
@@ -159,6 +217,7 @@ export default function DiscoverPage({
           days: String(days),
           min_rating: String(rating),
           min_votes: "5",
+          genres: selectedGenres.join(","),
           page_limit: String(pageLimit),
           sort,
         });
@@ -202,6 +261,7 @@ export default function DiscoverPage({
     rating,
     sort,
     pageLimit,
+    selectedGenres,
     filterKey,
     refresh,
   ]);
@@ -239,8 +299,9 @@ export default function DiscoverPage({
     setHideOwned(false);
     setMediaType("all");
     setProviderId(0);
-    setDays(30);
-    setRating(70);
+    setDays(DEFAULT_DAYS);
+    setRating(DEFAULT_RATING);
+    setSelectedGenres([]);
     setSort("newest");
   }
 
@@ -320,6 +381,15 @@ export default function DiscoverPage({
                 setPageLimit(2);
                 setMediaType(type.value);
                 setProviderId(0);
+                setSelectedGenres(previous =>
+                  previous.filter(id => {
+                    const genre = genreOptions.find(
+                      g => g.id === id
+                    );
+                    return type.value === "all" ||
+                      !!genre?.[type.value].length;
+                  })
+                );
               }}
             >
               <span className="discover-type-icon">
@@ -385,10 +455,20 @@ export default function DiscoverPage({
           ))}
         </div>
 
-        <div className="discover-section-label">
-          03 / {mode === "streaming"
-            ? "AVAILABILITY FILTERS"
-            : "RELEASE FILTERS"}
+        <div className="discover-filter-heading">
+          <div className="discover-section-label">
+            03 / {mode === "streaming"
+              ? "AVAILABILITY FILTERS"
+              : "DISCOVER FILTERS"}
+          </div>
+
+          <button
+            type="button"
+            className="discover-reset-link"
+            onClick={resetFilters}
+          >
+            ↻ RESET
+          </button>
         </div>
 
         <div className="discover-filter-grid">
@@ -410,6 +490,13 @@ export default function DiscoverPage({
               <option value={90}>Last 90 days</option>
             </select>
           </label>
+
+          <GenreFilter
+            options={availableGenres}
+            selected={selectedGenres}
+            onChange={changeGenres}
+            disabled={!genreOptions.length}
+          />
 
           <label>
             <span>SORT BY {mode === "streaming"
@@ -433,6 +520,36 @@ export default function DiscoverPage({
             </select>
           </label>
         </div>
+
+        {genreError && (
+          <div className="discover-warning">
+            Genres unavailable: {genreError}
+          </div>
+        )}
+
+        {selectedGenres.length > 0 && (
+          <div className="discover-genre-chips">
+            {selectedGenres.map(id => (
+              <button
+                type="button"
+                key={id}
+                aria-label={`Remove genre ${id}`}
+                onClick={() => changeGenres(
+                  selectedGenres.filter(value => value !== id)
+                )}
+              >
+                {genreOptions.find(g => g.id === id)?.label ?? id}
+                <span aria-hidden="true">×</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {mode === "streaming" && (
+          <small className="discover-loaded-filter-note">
+            Genre, rating and sorting apply to loaded titles.
+          </small>
+        )}
 
         <div className="discover-rating-filter">
 
@@ -459,8 +576,7 @@ export default function DiscoverPage({
           />
 
           <div className="discover-range-labels">
-            <span>ALL</span>
-            <span>50%</span>
+            <span>Any rating</span>
             <span>100%</span>
           </div>
         </div>
@@ -487,13 +603,7 @@ export default function DiscoverPage({
             </button>
           </div>
 
-          <button
-            className="discover-reset"
-            type="button"
-            onClick={resetFilters}
-          >
-            RESET FILTERS
-          </button>
+
         </div>
       </div>
 
@@ -519,6 +629,7 @@ export default function DiscoverPage({
           providers={providers}
           days={days}
           rating={rating}
+          genreIds={streamingGenreIds}
           sort={sort}
           hideOwned={hideOwned}
           libraryKeys={libraryKeys}
@@ -664,8 +775,8 @@ export default function DiscoverPage({
         </p>
 
         <p>
-          This product uses the TMDB API but is not
-          endorsed or certified by TMDB.
+          This application uses TMDB and the TMDB APIs
+          but is not endorsed, certified, or otherwise approved by TMDB.
         </p>
 
         <p>
