@@ -8,6 +8,6 @@ tls-san:
   - 192.168.100.50
 
 flannel-backend: vxlan
-flannel-iface: wlp10s0
+flannel-iface: enp15s0
 
 secrets-encryption: true

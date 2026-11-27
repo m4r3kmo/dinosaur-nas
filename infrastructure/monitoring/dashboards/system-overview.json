@@ -971,7 +971,7 @@
     },
     {
       "id": 15,
-      "title": "Wi-Fi Network Traffic",
+      "title": "Ethernet Network Traffic",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -990,7 +990,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "8 * rate(node_network_receive_bytes_total{job=\"node-exporter\",device=\"wlp10s0\"}[5m])",
+          "expr": "8 * rate(node_network_receive_bytes_total{job=\"node-exporter\",device=\"enp15s0\"}[5m])",
           "legendFormat": "Download",
           "instant": false,
           "range": true
@@ -1001,7 +1001,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "8 * rate(node_network_transmit_bytes_total{job=\"node-exporter\",device=\"wlp10s0\"}[5m])",
+          "expr": "8 * rate(node_network_transmit_bytes_total{job=\"node-exporter\",device=\"enp15s0\"}[5m])",
           "legendFormat": "Upload",
           "instant": false,
           "range": true
