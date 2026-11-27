@@ -62,6 +62,13 @@ spec:
                 name: {{ .Values.credentials.existingSecret }}
 
           env:
+            - name: TMDB_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: dinosaur-discover-credentials
+                  key: TMDB_ACCESS_TOKEN
+                  optional: true
+
             - name: DOWNLOAD_WORKERS
               value: {{ .Values.downloadWorkers | quote }}
 

@@ -25,7 +25,8 @@ RUN npm run build
 FROM docker.io/library/python:3.13-slim-bookworm
 
 LABEL org.opencontainers.image.title="Dinosaur Downloader"
-LABEL org.opencontainers.image.version="0.5.6"
+ARG DOWNLOADER_VERSION
+LABEL org.opencontainers.image.version="${DOWNLOADER_VERSION}"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -54,6 +55,7 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/main.py ./
+COPY backend/discover/ ./discover/
 COPY backend/system_metrics.py ./
 COPY backend/fastshare.py ./
 COPY backend/download.py ./
