@@ -1353,7 +1353,7 @@
     },
     {
       "id": 19,
-      "title": "Wi-Fi Download",
+      "title": "Ethernet Download",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1372,7 +1372,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "8 * rate(node_network_receive_bytes_total{job=\"node-exporter\",device=\"wlp10s0\"}[2m])",
+          "expr": "8 * rate(node_network_receive_bytes_total{job=\"node-exporter\",device=\"enp15s0\"}[2m])",
           "legendFormat": "Download",
           "instant": false,
           "range": true
@@ -1421,7 +1421,7 @@
     },
     {
       "id": 20,
-      "title": "Wi-Fi Upload",
+      "title": "Ethernet Upload",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1440,7 +1440,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "8 * rate(node_network_transmit_bytes_total{job=\"node-exporter\",device=\"wlp10s0\"}[2m])",
+          "expr": "8 * rate(node_network_transmit_bytes_total{job=\"node-exporter\",device=\"enp15s0\"}[2m])",
           "legendFormat": "Upload",
           "instant": false,
           "range": true
