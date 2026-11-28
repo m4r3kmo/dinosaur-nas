@@ -35,3 +35,7 @@ configMapGenerator:
   - name: dinosaur-streaming-catalogs-dashboard
     files:
       - streaming-catalogs.json
+
+  - name: dinosaur-csfd-api-dashboard
+    files:
+      - csfd-api.json

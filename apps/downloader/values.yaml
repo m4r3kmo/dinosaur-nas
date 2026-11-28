@@ -4,7 +4,7 @@ downloadWorkers: 3
 
 image:
   repository: localhost/dinosaur-downloader
-  tag: "0.6.2"
+  tag: "0.6.3"
   pullPolicy: Never
 
 credentials:
@@ -83,3 +83,7 @@ monitoring:
   release: monitoring
   interval: 60s
   scrapeTimeout: 10s
+
+csfd:
+  enabled: true
+  existingSecret: dinosaur-czdb-credentials
