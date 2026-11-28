@@ -1,0 +1,56 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dinolab-media
+  namespace: media
+spec:
+  secretName: dinolab-media-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  dnsNames:
+    - jellyfin.dinolab.space
+    - download.dinolab.space
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dinolab-monitoring
+  namespace: monitoring
+spec:
+  secretName: dinolab-monitoring-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  dnsNames:
+    - grafana.dinolab.space
+    - prometheus.dinolab.space
+    - alertmanager.dinolab.space
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: dinolab-argocd
+  namespace: argocd
+spec:
+  secretName: dinolab-argocd-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+    group: cert-manager.io
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  dnsNames:
+    - argocd.dinolab.space

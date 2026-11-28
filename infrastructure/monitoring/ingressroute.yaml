@@ -72,3 +72,79 @@ spec:
 
   tls:
     secretName: dinosaur-monitoring-tls
+
+---
+# ---------------------------------------------------------------------------
+# Grafana
+# ---------------------------------------------------------------------------
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana-dinolab
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - kind: Rule
+      match: Host(`grafana.dinolab.space`)
+      services:
+        - name: monitoring-grafana
+          port: 80
+
+  tls:
+    secretName: dinolab-monitoring-tls
+
+---
+# ---------------------------------------------------------------------------
+# Prometheus
+# ---------------------------------------------------------------------------
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: prometheus-dinolab
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - kind: Rule
+      match: Host(`prometheus.dinolab.space`)
+      middlewares:
+        - name: monitoring-auth
+      services:
+        - name: dinosaur-monitoring-prometheus
+          port: 9090
+
+  tls:
+    secretName: dinolab-monitoring-tls
+
+---
+# ---------------------------------------------------------------------------
+# Alertmanager
+# ---------------------------------------------------------------------------
+
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: alertmanager-dinolab
+  namespace: monitoring
+spec:
+  entryPoints:
+    - websecure
+
+  routes:
+    - kind: Rule
+      match: Host(`alertmanager.dinolab.space`)
+      middlewares:
+        - name: monitoring-auth
+      services:
+        - name: dinosaur-monitoring-alertmanager
+          port: 9093
+
+  tls:
+    secretName: dinolab-monitoring-tls

@@ -49,6 +49,12 @@ ingress:
   tls:
     existingSecret: dinosaur-wildcard-managed-tls
 
+  dinolab:
+    enabled: true
+    host: download.dinolab.space
+    tls:
+      existingSecret: dinolab-media-tls
+
   auth:
     existingSecret: downloader-web-auth
     realm: Dinosaur NAS
