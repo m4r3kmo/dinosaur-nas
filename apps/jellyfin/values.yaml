@@ -31,6 +31,12 @@ ingress:
     enabled: true
     existingSecret: dinosaur-wildcard-managed-tls
 
+  dinolab:
+    enabled: true
+    host: jellyfin.dinolab.space
+    tls:
+      existingSecret: dinolab-media-tls
+
 persistence:
   config:
     storageClassName: local-path

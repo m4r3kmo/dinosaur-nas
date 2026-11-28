@@ -116,3 +116,50 @@ verify-pki:
 		echo "Verification: OK"; \
 		echo; \
 	done'
+
+# ---------------------------------------------------------------------------
+# DinoLab Let's Encrypt PKI
+# ---------------------------------------------------------------------------
+
+.PHONY: deploy-dinolab-pki status-dinolab-pki
+.PHONY: test-dinolab-pki clean-dinolab-pki-test
+
+deploy-dinolab-pki:
+	kubectl -n cert-manager get secret dinolab-cloudflare
+	kubectl apply --dry-run=server -f infrastructure/cert-manager/letsencrypt-issuers.yaml
+	kubectl apply -f infrastructure/cert-manager/letsencrypt-issuers.yaml
+	kubectl wait --for=condition=Ready clusterissuer/letsencrypt-staging --timeout=180s
+	kubectl wait --for=condition=Ready clusterissuer/letsencrypt-prod --timeout=180s
+
+status-dinolab-pki:
+	kubectl get clusterissuers
+	kubectl get certificates,certificaterequests -A
+	kubectl get orders,challenges -A
+
+test-dinolab-pki:
+	kubectl apply -f infrastructure/cert-manager/letsencrypt-smoke-test.yaml
+	kubectl -n monitoring wait --for=condition=Ready certificate/dinolab-staging-test --timeout=300s
+	kubectl -n monitoring get certificate dinolab-staging-test
+
+clean-dinolab-pki-test:
+	kubectl delete -f infrastructure/cert-manager/letsencrypt-smoke-test.yaml --ignore-not-found
+	kubectl -n monitoring delete secret dinolab-staging-test-tls --ignore-not-found
+
+.PHONY: deploy-dinolab-certificates verify-dinolab-certificates
+
+deploy-dinolab-certificates: deploy-dinolab-pki
+	kubectl apply --dry-run=server -f infrastructure/cert-manager/dinolab-certificates.yaml
+	kubectl apply -f infrastructure/cert-manager/dinolab-certificates.yaml
+	kubectl -n media wait --for=condition=Ready certificate/dinolab-media --timeout=600s
+	kubectl -n monitoring wait --for=condition=Ready certificate/dinolab-monitoring --timeout=600s
+	kubectl -n argocd wait --for=condition=Ready certificate/dinolab-argocd --timeout=600s
+
+verify-dinolab-certificates:
+	@set -e; for ns in media monitoring argocd; do \
+		echo "=== $$ns ==="; \
+		kubectl -n "$$ns" get secret "dinolab-$$ns-tls" \
+			-o jsonpath='{.data.tls\.crt}' | \
+		base64 -d | openssl x509 \
+			-noout -subject -issuer -dates -ext subjectAltName; \
+		echo; \
+	done
