@@ -121,6 +121,48 @@ def get_details(
         ) from None
 
 
+
+@router.get("/ratings/csfd/{media_type}/{tmdb_id}")
+def get_csfd_rating(
+    media_type: Literal["movie", "tv"],
+    tmdb_id: int,
+):
+    import sqlite3
+
+    from .csfd import get_rating
+
+    if tmdb_id < 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid TMDB ID",
+        )
+
+    try:
+        details = DiscoverCatalog().details(
+            media_type, tmdb_id
+        )
+
+        return get_rating(
+            tmdb_id=tmdb_id,
+            imdb_id=details.get("imdb_id"),
+            media_type=media_type,
+        )
+
+    except TMDBError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        ) from None
+
+    except (sqlite3.Error, OSError):
+        return {
+            "csfd_rating": None,
+            "csfd_id": None,
+            "csfd_url": None,
+            "status": "cache_error",
+        }
+
+
 @router.get("/library")
 def get_library():
 
@@ -221,11 +263,15 @@ def streaming_metrics():
 
     from fastapi.responses import PlainTextResponse
     from .metrics import get_streaming_metrics
+    from .csfd_metrics import get_csfd_metrics
 
     try:
 
         return PlainTextResponse(
-            content=get_streaming_metrics(),
+            content=(
+                get_streaming_metrics()
+                + get_csfd_metrics()
+            ),
             media_type="text/plain; version=0.0.4",
         )
 

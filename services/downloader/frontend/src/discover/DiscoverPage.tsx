@@ -784,6 +784,24 @@ export default function DiscoverPage({
             ? "Dates represent detected availability changes, not official platform addition dates."
             : "Dates represent title premieres, not streaming catalog addition dates."}
         </p>
+        <p>
+          ČSFD ratings provided by{" "}
+          <a
+            href="https://api.czdb.cz/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            CZDB
+          </a>
+          {" "} / {" "}
+          <a
+            href="https://www.csfd.cz/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            ČSFD
+          </a>
+        </p>
       </footer>
 
     </section>

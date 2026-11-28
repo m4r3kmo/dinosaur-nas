@@ -1805,3 +1805,10 @@ button.discover-switch.active {
   outline: 1px solid var(--discover-green);
   outline-offset: 1px;
 }
+
+/* CZDB / CSFD integration */
+.discover-card-ratings .discover-csfd-rating {
+  color: #e56b6b;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

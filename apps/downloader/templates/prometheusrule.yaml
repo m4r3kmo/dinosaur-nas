@@ -123,4 +123,99 @@ spec:
             description: '{{ "{{" }} $labels.provider {{ "}}" }} / {{ "{{" }} $labels.media_type {{ "}}" }} has not been scanned for more than 48 hours.'
 
 {{- end }}
+
+{{- if .Values.csfd.enabled }}
+
+    - name: dinosaur.csfd.api
+      rules:
+
+        - alert: DinosaurCZDBQuotaWarning
+          expr: |
+            (
+              dinosaur_csfd_requests_last_24h{
+                namespace="media",
+                service="dinosaur-downloader"
+              }
+              /
+              dinosaur_csfd_request_limit{
+                namespace="media",
+                service="dinosaur-downloader"
+              }
+              >= 0.8
+            )
+            and
+            (
+              dinosaur_csfd_requests_last_24h{
+                namespace="media",
+                service="dinosaur-downloader"
+              }
+              <
+              dinosaur_csfd_request_limit{
+                namespace="media",
+                service="dinosaur-downloader"
+              }
+            )
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dinosaur CZDB API quota warning"
+            description: "At least 80 percent of the internal rolling 24h CZDB API quota has been consumed."
+
+        - alert: DinosaurCZDBQuotaExhausted
+          expr: |
+            dinosaur_csfd_requests_last_24h{
+              namespace="media",
+              service="dinosaur-downloader"
+            }
+            >=
+            dinosaur_csfd_request_limit{
+              namespace="media",
+              service="dinosaur-downloader"
+            }
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dinosaur CZDB API quota exhausted"
+            description: "Internal CZDB API quota exhausted. Cached ratings remain available."
+
+        - alert: DinosaurCZDBRateLimited
+          expr: |
+            increase(
+              dinosaur_csfd_api_429_total{
+                namespace="media",
+                service="dinosaur-downloader"
+              }[15m]
+            ) > 0
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dinosaur CZDB API rate limited"
+            description: "CZDB returned HTTP 429 within the last 15 minutes."
+
+        - alert: DinosaurCZDBMetricsUnavailable
+          expr: |
+            absent(
+              dinosaur_csfd_metrics_up{
+                namespace="media",
+                service="dinosaur-downloader"
+              }
+            )
+            or
+            (
+              dinosaur_csfd_metrics_up{
+                namespace="media",
+                service="dinosaur-downloader"
+              } == 0
+            )
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dinosaur CZDB metrics unavailable"
+            description: "CZDB metrics have been missing or unhealthy for 10 minutes."
+
+{{- end }}
 {{- end }}

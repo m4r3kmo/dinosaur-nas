@@ -1,4 +1,5 @@
 import type { MediaItem } from "./types";
+import useCsfdRating from "./useCsfdRating";
 
 export default function MediaCard({
   item,
@@ -11,6 +12,11 @@ export default function MediaCard({
 }) {
   const rating = item.tmdb_rating;
 
+  const { cardRef, result: csfd } =
+    useCsfdRating(item.media_type, item.id);
+
+  const csfdRating = csfd?.csfd_rating ?? null;
+
   const ratingClass =
     rating == null ? "unknown" :
     rating >= 80 ? "excellent" :
@@ -21,6 +27,7 @@ export default function MediaCard({
   return (
     <button
       type="button"
+      ref={cardRef}
       className="discover-media-card"
       onClick={() => onSelect(item)}
       aria-label={`Search for ${item.title}`}
@@ -150,10 +157,13 @@ export default function MediaCard({
               : `${Math.round(rating)}%`}
           </span>
 
-          <span>
-            ČSFD {item.csfd_rating == null
+          <span
+            className="discover-csfd-rating"
+            title="ČSFD rating provided by CZDB"
+          >
+            ČSFD {csfdRating == null
               ? "—"
-              : `${item.csfd_rating}%`}
+              : `${csfdRating}%`}
           </span>
         </div>
 

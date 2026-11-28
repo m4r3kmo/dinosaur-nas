@@ -69,6 +69,15 @@ spec:
                   key: TMDB_ACCESS_TOKEN
                   optional: true
 
+            {{- if .Values.csfd.enabled }}
+            - name: CZDB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.csfd.existingSecret }}
+                  key: CZDB_API_KEY
+                  optional: true
+            {{- end }}
+
             - name: DOWNLOAD_WORKERS
               value: {{ .Values.downloadWorkers | quote }}
 
